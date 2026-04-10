@@ -11,8 +11,6 @@
 
 A class library of domain primitives for data validation and normalization in .NET, designed for use from a Swedish context - though many primitives (VAT numbers, IBAN, phone numbers, countries, currencies, and more) are relevant globally. Originally spun out of a set of validation classes built at [Budi Auktioner](https://www.budi.se/), the library has since grown well beyond that origin and is built for anyone, anywhere, who needs reliable Swedish-context validation in .NET.
 
-Reference-data provenance and redistribution notes are documented in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
 ## Key features
 
 - 📦 **100+ value-object types** covering organization numbers, VAT, banking, addresses, vehicles, measurements, and more
@@ -4535,28 +4533,6 @@ reg.GetBiluppgifterUrl();       // https://biluppgifter.se/fordon/ABC123
 reg.GetCarInfoUrl();            // https://www.car.info/sv-se/license-plate/S/ABC123
 ```
 
-### Reference-data versioning
-
-All reference data (countries, currencies, counties, municipalities, bank clearing numbers, EU/EEA/Schengen/SEPA membership lists, email provider lists, postal patterns) is embedded at build time. The `ReferenceData` class lets you inspect the source and last-verified date for every packaged dataset.
-
-```csharp
-using Buildi.Primitives;
-
-// Inspect a specific dataset
-var counties = ReferenceData.SwedishCounties;
-Console.WriteLine(counties.Name);          // SwedishCounties
-Console.WriteLine(counties.EntryCount);    // 21
-Console.WriteLine(counties.Source);        // SCB
-Console.WriteLine(counties.SourceUrl);     // https://www.scb.se/...
-Console.WriteLine(counties.LastVerified);  // 2025-03-01
-Console.WriteLine(counties.Description);  // 21 Swedish counties (län) with ...
-
-// Enumerate all datasets
-foreach (var ds in ReferenceData.All)
-    Console.WriteLine($"{ds.Name}: {ds.Source}, verified {ds.LastVerified}");
-```
-
-Available datasets: `SwedishCounties`, `SwedishMunicipalities`, `Countries`, `EuropeanUnionMembers`, `EeaMembers`, `SchengenMembers`, `SepaMembers`, `Currencies`, `SniCodes`, `SwedishBankClearingNumbers`, `PublicEmailProviders`, `PostalPatterns`, `Gs1Prefixes`.
 
 ### Language-aware formatting
 
@@ -4737,6 +4713,10 @@ Anyone building .NET software that deals with Swedish domain concepts - organiza
 **What about the test and sample data?**
 
 All test data and sample data in this repository is chosen purely at random from publicly available sources. Any resemblance or correlation with Budi Auktioner's own data is entirely coincidental and not intentional. No personal identifiable data should be included in the test and sample data, instead we should have use synthetic data provided by swedish authorities or info for public companies/organizations.
+
+## Third-party data
+
+Reference-data provenance and redistribution notes are documented in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## License
 
