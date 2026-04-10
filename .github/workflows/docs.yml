@@ -1,0 +1,63 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - samples/**
+      - docs/**
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  publish-docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Install DocFX
+        run: dotnet tool update -g docfx
+
+      - name: Build docs
+        run: docfx docs/docfx.json
+
+      - name: Publish Blazor WASM demo
+        run: dotnet publish samples/Buildi.Primitives.Demo/Buildi.Primitives.Demo.csproj -c Release -o demo-publish
+
+      - name: Copy demo into docs site
+        run: |
+          mkdir -p docs/_site/demo
+          cp -r demo-publish/wwwroot/* docs/_site/demo/
+          sed -i 's|<base href="/" />|<base href="/Buildi.Primitives/demo/" />|g' docs/_site/demo/index.html
+          cp docs/_site/demo/index.html docs/_site/demo/404.html
+          touch docs/_site/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

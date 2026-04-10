@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <VersionPrefix>0.11.0</VersionPrefix>
+    <PackageId>Buildi.Primitives</PackageId>
+    <Description>Swedish domain data validation and normalization — organization numbers, VAT, bankgiro, plusgiro, IBAN, bank accounts, zip codes, and phone numbers.</Description>
+    <Authors>Budi Auktioner</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Buildi/Buildi.Primitives</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>swedish;sweden;organization-number;vat;bankgiro;plusgiro;iban;validation;normalization</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\THIRD_PARTY_NOTICES.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ActiveLogin.Identity.Swedish" Version="3.0.0" />
+  </ItemGroup>
+</Project>

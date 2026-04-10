@@ -1,0 +1,45 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: 'BenchmarkDotNet filter (e.g. "*Banking*", "*" for all)'
+        required: false
+        default: '*'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run benchmarks
+        run: >
+          dotnet run
+          --project test/Buildi.Primitives.Benchmarks/Buildi.Primitives.Benchmarks.csproj
+          -c Release
+          -- --filter "${{ github.event.inputs.filter }}"
+          --artifacts ./BenchmarkDotNet.Artifacts
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: ./BenchmarkDotNet.Artifacts
+          if-no-files-found: warn
+          retention-days: 30

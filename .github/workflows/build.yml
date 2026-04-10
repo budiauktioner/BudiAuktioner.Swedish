@@ -1,0 +1,150 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  BUILD_CONFIGURATION: 'Release'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Set BUILD_VERSION
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_PREFIX=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' src/Buildi.Primitives/Buildi.Primitives.csproj)
+          BUILD_VERSION="${VERSION_PREFIX}.${{ github.run_number }}"
+          echo "build_version=${BUILD_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "Build version: ${BUILD_VERSION}"
+          echo "Commit SHA: ${{ github.sha }}"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore /p:Version=${{ env.BUILD_VERSION }} /p:SourceRevisionId=${{ github.sha }}
+
+      - name: Test
+        id: test
+        continue-on-error: true
+        run: >
+          dotnet test test/Buildi.Primitives.Tests/Buildi.Primitives.Tests.csproj
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build
+          --verbosity normal
+          --logger "trx;LogFileName=test_results.trx"
+          --results-directory TestResults
+
+      - name: Display test results
+        if: always() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure')
+        id: display_tests
+        shell: pwsh
+        run: |
+          $testDir = "TestResults"
+          if (-not (Test-Path $testDir)) {
+            Write-Host "::warning::No test results directory found."
+            echo "TOTAL_FAILED_TESTS=0" >> $env:GITHUB_ENV
+            exit 0
+          }
+
+          Write-Host "## Test Results Summary" -ForegroundColor Cyan
+
+          $testFiles = Get-ChildItem -Path $testDir -Filter "*.trx" -Recurse
+          $totalFailedTests = 0
+
+          if ($testFiles.Count -eq 0) {
+            Write-Host "::warning::No .trx files found in test results."
+            echo "TOTAL_FAILED_TESTS=0" >> $env:GITHUB_ENV
+            exit 0
+          }
+
+          foreach ($file in $testFiles) {
+            Write-Host "`n### Test Results from $($file.Name)" -ForegroundColor Green
+
+            [xml]$trxContent = Get-Content -Path $file.FullName
+            $testRun = $trxContent.TestRun
+
+            $totalTests = $testRun.ResultSummary.Counters.total
+            $passedTests = $testRun.ResultSummary.Counters.passed
+            $failedTests = $testRun.ResultSummary.Counters.failed
+            $skippedTests = $testRun.ResultSummary.Counters.notExecuted
+
+            $totalFailedTests += $failedTests
+
+            Write-Host "Total Tests: $totalTests | Passed: $passedTests | Failed: $failedTests | Skipped: $skippedTests"
+
+            if ($failedTests -gt 0) {
+              Write-Host "`n#### Failed Tests:" -ForegroundColor Red
+              $results = $testRun.Results.UnitTestResult | Where-Object { $_.outcome -eq "Failed" }
+              foreach ($result in $results) {
+                $testName = $result.testName
+                $errorMessage = $result.Output.ErrorInfo.Message -replace "`n", " " -replace "`r", " "
+                Write-Host "::error::FAILED: $testName — $errorMessage"
+              }
+            }
+
+            if ($passedTests -gt 0) {
+              Write-Host "`n$passedTests tests passed successfully"
+            }
+          }
+
+          echo "TOTAL_FAILED_TESTS=$totalFailedTests" >> $env:GITHUB_ENV
+
+          if ($totalFailedTests -gt 0) {
+            Write-Host "::warning::There were $totalFailedTests failed tests across all test projects!"
+          }
+
+      - name: Upload test results
+        if: always() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail on test failures
+        if: >-
+          always()
+          && (steps.test.outcome == 'failure'
+              || (env.TOTAL_FAILED_TESTS != '' && env.TOTAL_FAILED_TESTS != '0'))
+        shell: bash
+        run: |
+          if [[ "${{ steps.test.outcome }}" == "failure" ]]; then
+            echo "::error::Test step failed. Check the build log above."
+          else
+            echo "::error::${TOTAL_FAILED_TESTS} test(s) failed. See 'Display test results' step and the uploaded TRX artifacts for details."
+          fi
+          exit 1
+
+      - name: Pack (CI)
+        run: dotnet pack src/Buildi.Primitives/Buildi.Primitives.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --output ./artifacts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-${{ matrix.os }}
+          path: ./artifacts/*.nupkg

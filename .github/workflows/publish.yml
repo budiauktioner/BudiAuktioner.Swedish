@@ -1,0 +1,59 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  BUILD_CONFIGURATION: 'Release'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore /p:Version=${{ steps.version.outputs.VERSION }} /p:SourceRevisionId=${{ github.sha }}
+
+      - name: Test
+        run: dotnet test --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/Buildi.Primitives/Buildi.Primitives.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --output ./artifacts
+
+      - name: Push to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists — uploading assets only"
+            gh release upload "${{ github.ref_name }}" ./artifacts/*.nupkg --clobber
+          else
+            gh release create "${{ github.ref_name }}" \
+              --title "Release ${{ steps.version.outputs.VERSION }}" \
+              --generate-notes \
+              ./artifacts/*.nupkg
+          fi

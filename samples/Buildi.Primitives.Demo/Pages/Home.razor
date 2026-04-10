@@ -1,0 +1,1814 @@
+@page "/"
+
+@using Buildi.Primitives
+@using Buildi.Primitives.TextScanning
+@using Buildi.Primitives.Contact
+@using Buildi.Primitives.Web
+@using Buildi.Primitives.Person
+@using Buildi.Primitives.Organization
+@using Buildi.Primitives.Banking
+@using Buildi.Primitives.Vehicle
+@using Buildi.Primitives.Property
+@using Buildi.Primitives.Product
+@using Buildi.Primitives.Geography
+@using Buildi.Primitives.Finance
+@using Buildi.Primitives.Measurement
+@using System.Text
+@using System.Text.RegularExpressions
+@using System.Text.Json
+@using System.Net
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<PageTitle>Buildi.Primitives Demo</PageTitle>
+
+<HeadContent>
+    <style>
+        mark.scan-match { padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .cat-personal { background-color: #f8d7da; border-bottom: 2px solid #dc3545; }
+        .cat-org { background-color: #cfe2ff; border-bottom: 2px solid #0d6efd; }
+        .cat-financial { background-color: #d1e7dd; border-bottom: 2px solid #198754; }
+        .cat-contact { background-color: #cff4fc; border-bottom: 2px solid #0dcaf0; }
+        .cat-vehicle { background-color: #fff3cd; border-bottom: 2px solid #ffc107; }
+        .cat-property { background-color: #e2e3e5; border-bottom: 2px solid #6c757d; }
+        .cat-product { background-color: #f5e6ff; border-bottom: 2px solid #6f42c1; }
+        .cat-geography { background-color: #d1f2eb; border-bottom: 2px solid #20c997; }
+        .cat-measurement { background-color: #fff0e6; border-bottom: 2px solid #fd7e14; }
+
+        .scan-tip-wrap { position: relative; display: inline; }
+        .scan-tip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: var(--bs-body-bg, #fff);
+            color: var(--bs-body-color, #212529);
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: 8px;
+            padding: 10px 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15);
+            white-space: nowrap;
+            font-family: var(--bs-body-font-family);
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+        .scan-tip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 7px solid transparent;
+            border-top-color: var(--bs-border-color, #dee2e6);
+        }
+        .scan-tip::before {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--bs-body-bg, #fff);
+            z-index: 1;
+            margin-top: -1px;
+        }
+        .scan-tip-wrap:hover .scan-tip { display: block; }
+        .scan-tip-row { display: flex; gap: 6px; }
+        .scan-tip-label { color: var(--bs-secondary-color); min-width: 75px; }
+        .scan-tip-value { font-family: var(--bs-font-monospace); }
+
+        .scan-tip-wrap.tip-left .scan-tip { left: 0; transform: none; }
+        .scan-tip-wrap.tip-left .scan-tip::after,
+        .scan-tip-wrap.tip-left .scan-tip::before { left: 18px; transform: none; }
+        .scan-tip-source { display: block; }
+        .scan-tip-source a { color: var(--bs-link-color); text-decoration: none; word-break: break-all; }
+        .scan-tip-source a:hover { text-decoration: underline; }
+
+        .scan-lookup { text-decoration: underline; text-decoration-style: dashed; }
+        .scan-lookup:hover { text-decoration-style: solid; }
+    </style>
+</HeadContent>
+
+<div class="container-fluid py-4 px-4">
+
+    <div class="mb-4">
+        <h1 class="display-6 fw-bold">Buildi.Primitives</h1>
+        <p class="lead text-body-secondary">
+            .NET library for validating, normalizing, and scanning Swedish domain data.
+        </p>
+    </div>
+
+    @* ───────── Text Scanner ───────── *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Text Scanner</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary small mb-2">
+                Paste text containing Swedish identifiers &mdash; the scanner detects organisation numbers,
+                personal identity numbers, phone numbers, emails, IBANs, and 20+ other types.
+            </p>
+
+            <div class="row g-2 mb-2">
+                <div class="col">
+                    <textarea class="form-control font-monospace" rows="10"
+                              @bind="inputText" @bind:event="oninput" @bind:after="Scan"
+                              placeholder="Paste or type text here..."></textarea>
+                </div>
+                <div class="col-auto d-flex flex-column gap-2">
+                    <span class="text-body-secondary small">Load example:</span>
+                    @foreach (var (name, text) in SampleTexts)
+                    {
+                        var t = text;
+                        <button class="btn btn-outline-secondary btn-sm text-start"
+                                @onclick="() => LoadExample(t)">@name</button>
+                    }
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+                <div class="btn-group" role="group">
+                    <button type="button"
+                            class="btn btn-sm @(displayMode == "label" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="SetModeLabel">Label</button>
+                    <button type="button"
+                            class="btn btn-sm @(displayMode == "mask" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="SetModeMask">Mask</button>
+                    <button type="button"
+                            class="btn btn-sm @(displayMode == "redact" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="SetModeRedact">Redact</button>
+                    <button type="button"
+                            class="btn btn-sm @(displayMode == "lookup" ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="SetModeLookup">Lookup</button>
+                </div>
+
+                <select class="form-select form-select-sm w-auto" @bind="minimumConfidence" @bind:after="Scan">
+                    @foreach (var conf in Enum.GetValues<TextMatchConfidence>())
+                    {
+                        <option value="@conf">Min: @conf</option>
+                    }
+                </select>
+            </div>
+
+            @if (scanResult != null && scannedText != null)
+            {
+                @if (scanResult.ResolvedCandidates.Count > 0)
+                {
+                    <div class="mb-2 d-flex flex-wrap gap-1 align-items-center">
+                        @foreach (var cat in Enum.GetValues<TextCandidateCategory>())
+                        {
+                            var count = scanResult.ResolvedCandidates.Count(c => c.Category == cat);
+                            if (count > 0)
+                            {
+                                <span class="badge @GetCategoryBadgeClass(cat)">@cat (@count)</span>
+                            }
+                        }
+                        <span class="text-body-secondary small ms-2">
+                            @scanResult.ResolvedCandidates.Count total
+                        </span>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info small py-2 mb-2">No candidates found.</div>
+                }
+
+                <div class="p-3 bg-body-tertiary rounded border"
+                     style="white-space: pre-wrap; font-family: var(--bs-font-monospace); font-size: 0.85rem; line-height: 1.7;">
+                    @if (displayMode == "label")
+                    {
+                        @BuildLabeledHtml()
+                    }
+                    else if (displayMode == "mask")
+                    {
+                        @scanResult.MaskAll(scannedText)
+                    }
+                    else if (displayMode == "lookup")
+                    {
+                        @BuildLookupHtml()
+                    }
+                    else
+                    {
+                        @scanResult.RedactAll(scannedText)
+                    }
+                </div>
+
+                @if (scanResult.ResolvedCandidates.Count > 0)
+                {
+                    <details class="mt-3">
+                        <summary class="btn btn-link btn-sm p-0 text-decoration-none">
+                            Show all @scanResult.ResolvedCandidates.Count candidates
+                        </summary>
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm table-striped align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Original</th>
+                                        <th>Type</th>
+                                        <th>Category</th>
+                                        <th>Confidence</th>
+                                        <th>Formatted</th>
+                                        <th>Normalized</th>
+                                        <th>Masked</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var c in scanResult.ResolvedCandidates)
+                                    {
+                                        <tr>
+                                            <td><code>@c.OriginalText</code></td>
+                                            <td class="small">@c.TypeName</td>
+                                            <td><span class="badge @GetCategoryBadgeClass(c.Category)">@c.Category</span></td>
+                                            <td><span class="badge @GetConfidenceBadge(c.Confidence)">@c.Confidence</span></td>
+                                            <td><code>@c.FormattedForm</code></td>
+                                            <td><code>@c.NormalizedForm</code></td>
+                                            <td><code>@c.MaskedForm</code></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                }
+            }
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    @* ───────── Type Explorer ───────── *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Type Explorer</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary small mb-3">
+                All supported types with sample data. Edit any input to see live validation results.
+            </p>
+
+            @foreach (var group in TypeRegistry.Select((t, i) => (Type: t, Index: i)).GroupBy(x => x.Type.Category))
+            {
+                <h6 class="mt-3 mb-2 text-body-secondary border-bottom pb-1">@group.Key</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-2" style="font-size: 0.82rem;">
+                        <thead>
+                            <tr class="text-body-secondary">
+                                <th style="width: 180px;">Type</th>
+                                <th style="width: 240px;">Input</th>
+                                <th style="width: 44px;" class="text-center">Valid</th>
+                                <th>Format()</th>
+                                <th>Normalize()</th>
+                                <th>Masked</th>
+                                <th>Natural</th>
+                                <th>Properties</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var (ti, idx) in group)
+                            {
+                                var input = typeInputs[idx];
+                                var hasInput = !string.IsNullOrEmpty(input);
+                                var isValid = hasInput && ti.IsValidFn(input);
+                                <tr>
+                                    <td class="fw-medium text-nowrap">
+                                        @if (ti.TypeMeta is { } m)
+                                        {
+                                            <span class="scan-tip-wrap tip-left" style="cursor: help;">
+                                                @m.Emoji @ti.Name
+                                                <span class="scan-tip">
+                                                    <div class="fw-bold mb-1">@m.EnglishName / @m.LocalizedName</div>
+                                                    @if (m.Sources.Count > 0)
+                                                    {
+                                                        <div class="scan-tip-row mb-1">
+                                                            <span class="scan-tip-label">Sources</span>
+                                                        </div>
+                                                        @foreach (var url in m.Sources)
+                                                        {
+                                                            <span class="scan-tip-source">
+                                                                <a href="@url" target="_blank" rel="noopener">@(new Uri(url).Host)</a>
+                                                            </span>
+                                                        }
+                                                    }
+                                                </span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            @ti.Name
+                                        }
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm font-monospace py-0"
+                                               style="font-size: 0.78rem;"
+                                               value="@typeInputs[idx]"
+                                               @oninput="e => typeInputs[idx] = e.Value?.ToString() ?? string.Empty" />
+                                    </td>
+                                    <td class="text-center">
+                                        @if (!hasInput)
+                                        { <span class="text-body-tertiary">&mdash;</span> }
+                                        else if (isValid)
+                                        { <span class="text-success fw-bold">&#x2713;</span> }
+                                        else
+                                        { <span class="text-danger">&#x2717;</span> }
+                                    </td>
+                                    <td><code class="small text-break">@(hasInput ? ti.FormatFn(input) ?? "\u2014" : "\u2014")</code></td>
+                                    <td><code class="small text-break">@(hasInput ? ti.NormalizeFn(input) ?? "\u2014" : "\u2014")</code></td>
+                                    <td><code class="small text-break">@(isValid ? ti.MaskedFn(input!) ?? "\u2014" : "\u2014")</code></td>
+                                    <td><code class="small text-break">@(isValid && ti.NaturalFn is not null ? ti.NaturalFn(input!) ?? "\u2014" : "\u2014")</code></td>
+                                    <td>
+                                        @if (hasInput && ti.VariantsFn?.Invoke(input) is { Count: > 0 } variants)
+                                        {
+                                            <div class="d-flex flex-column gap-1">
+                                                @foreach (var v in variants)
+                                                {
+                                                    <code class="small text-break">@v</code>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    @* ───────── Municipality Graph ───────── *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Municipality Graph — k-Nearest Neighbors</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary small mb-2">
+                All 290 Swedish municipalities positioned by their
+                <a href="https://www.wikidata.org/wiki/Property:P625" target="_blank" rel="noopener">Wikidata coordinates</a>,
+                connected to their <em>k</em> geographically nearest neighbors.
+                Hover a node to see its connections, or click a county in the legend to filter.
+            </p>
+            <div id="municipality-graph-container"></div>
+
+            <hr class="my-3" />
+
+            <h6 class="mb-2">Neighbor Search — <code>FindNeighbors(radiusKm)</code></h6>
+            <p class="text-body-secondary small mb-2">
+                Select a municipality and radius to find all neighbors within that distance.
+                Results are computed using the Haversine formula and highlighted on the graph above.
+            </p>
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-auto" style="min-width:200px">
+                    <label class="form-label small mb-1">Municipality</label>
+                    <select class="form-select form-select-sm" @bind="neighborSearchMuni" @bind:after="RunNeighborSearch">
+                        @foreach (var m in SwedishMunicipality.All)
+                        {
+                            <option value="@m.Code">@m.LocalizedName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto" style="width:140px">
+                    <label class="form-label small mb-1">Radius (km)</label>
+                    <input type="number" class="form-control form-control-sm" min="1" max="2000" step="10"
+                           @bind="neighborSearchRadius" @bind:event="oninput" @bind:after="RunNeighborSearch" />
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-primary">@(neighborResults?.Count ?? 0) found</span>
+                </div>
+            </div>
+
+            @if (neighborResults is { Count: > 0 })
+            {
+                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                    <table class="table table-sm table-hover align-middle mb-0" style="font-size:.82rem">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width:40px">#</th>
+                                <th>Municipality</th>
+                                <th>County</th>
+                                <th class="text-end">Distance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ var rank = 0; }
+                            @foreach (var n in neighborResults)
+                            {
+                                rank++;
+                                <tr>
+                                    <td class="text-body-secondary">@rank</td>
+                                    <td class="fw-medium">@n.Municipality.LocalizedName <code class="text-body-tertiary ms-1">@n.Municipality.Code</code></td>
+                                    <td class="text-body-secondary">@n.Municipality.County.LocalizedName</td>
+                                    <td class="text-end font-monospace">@n.Distance.Kilometers.ToString("N1") km</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ───────── County Graph ───────── *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">County Graph — Adjacency</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary small mb-2">
+                All 21 Swedish counties positioned by their
+                <a href="https://www.wikidata.org/wiki/Property:P625" target="_blank" rel="noopener">Wikidata coordinates</a>,
+                connected by actual land borders (derived from municipality-level SCB boundary data).
+                Hover a node to see adjacent counties and municipalities.
+            </p>
+            <div id="county-graph-container"></div>
+        </div>
+    </div>
+
+    @* ───────── Country Graph ───────── *@
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Country Graph — Land Borders</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary small mb-2">
+                Countries positioned by their
+                <a href="https://www.wikidata.org/wiki/Property:P625" target="_blank" rel="noopener">Wikidata coordinates</a>,
+                connected by shared land borders (sourced from
+                <a href="https://www.wikidata.org/wiki/Property:P47" target="_blank" rel="noopener">Wikidata P47</a>).
+                Filter by continent, hover a node to see neighbors and capital city.
+            </p>
+            <div id="country-graph-container"></div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    // ── Text Scanner state ─────────────────────────────────────────
+
+    private string inputText = "";
+    private string displayMode = "label";
+    private TextMatchConfidence minimumConfidence = TextMatchConfidence.Medium;
+    private TextScanResult? scanResult;
+    private string? scannedText;
+    private readonly TextScanner scanner = new();
+
+    private void SetModeLabel() => displayMode = "label";
+    private void SetModeMask() => displayMode = "mask";
+    private void SetModeRedact() => displayMode = "redact";
+    private void SetModeLookup() => displayMode = "lookup";
+
+    private void LoadExample(string text)
+    {
+        inputText = text;
+        Scan();
+    }
+
+    private void Scan()
+    {
+        if (string.IsNullOrWhiteSpace(inputText))
+        {
+            scanResult = null;
+            scannedText = null;
+            return;
+        }
+        var options = new TextScannerOptions { MinimumConfidence = minimumConfidence };
+        scanResult = scanner.Scan(inputText, options);
+        scannedText = inputText;
+    }
+
+    // ── Label-mode HTML builder ────────────────────────────────────
+
+    private MarkupString BuildLabeledHtml()
+    {
+        if (scanResult == null || scannedText == null) return new MarkupString("");
+
+        var sb = new StringBuilder();
+        var lastEnd = 0;
+
+        foreach (var c in scanResult.ResolvedCandidates)
+        {
+            if (c.StartIndex > lastEnd)
+                AppendEncoded(sb, scannedText[lastEnd..c.StartIndex]);
+
+            var css = GetCategoryClass(c.Category);
+            var catBadge = GetCategoryBadgeClass(c.Category);
+            var confBadge = GetConfidenceBadge(c.Confidence);
+
+            sb.Append($"<span class=\"scan-tip-wrap\">");
+            sb.Append($"<mark class=\"scan-match {css}\">");
+            sb.Append(WebUtility.HtmlEncode(scannedText[c.StartIndex..c.EndIndex]));
+            sb.Append("</mark>");
+
+            sb.Append("<span class=\"scan-tip\">");
+            sb.Append($"<div class=\"fw-bold mb-1\">{WebUtility.HtmlEncode(c.TypeName)}</div>");
+            sb.Append($"<div class=\"mb-2\"><span class=\"badge {catBadge} me-1\">{c.Category}</span>");
+            sb.Append($"<span class=\"badge {confBadge}\">{c.Confidence}</span></div>");
+            sb.Append($"<div class=\"scan-tip-row\"><span class=\"scan-tip-label\">Formatted</span><span class=\"scan-tip-value\">{WebUtility.HtmlEncode(c.FormattedForm)}</span></div>");
+            sb.Append($"<div class=\"scan-tip-row\"><span class=\"scan-tip-label\">Normalized</span><span class=\"scan-tip-value\">{WebUtility.HtmlEncode(c.NormalizedForm)}</span></div>");
+            sb.Append($"<div class=\"scan-tip-row\"><span class=\"scan-tip-label\">Masked</span><span class=\"scan-tip-value\">{WebUtility.HtmlEncode(c.MaskedForm)}</span></div>");
+            sb.Append("</span></span>");
+
+            lastEnd = c.EndIndex;
+        }
+
+        if (lastEnd < scannedText.Length)
+            AppendEncoded(sb, scannedText[lastEnd..]);
+
+        return new MarkupString(sb.ToString());
+    }
+
+    private static void AppendEncoded(StringBuilder sb, string text) =>
+        sb.Append(WebUtility.HtmlEncode(text).Replace("\n", "<br />"));
+
+    // ── Lookup-mode HTML builder ────────────────────────────────────
+
+    private static readonly Regex MarkdownLinkPattern = new(
+        @"\[([^\]]+)\]\(([^)]+)\)", RegexOptions.Compiled);
+
+    private MarkupString BuildLookupHtml()
+    {
+        if (scanResult == null || scannedText == null) return new MarkupString("");
+
+        var markdown = scanResult.ReplaceAll(scannedText, c =>
+        {
+            var url = GetLookupUrl(c);
+            return url != null ? $"[{c.OriginalText}]({url})" : c.OriginalText;
+        });
+
+        var encoded = WebUtility.HtmlEncode(markdown).Replace("\n", "<br />");
+        var html = MarkdownLinkPattern.Replace(encoded,
+            "<a href=\"$2\" target=\"_blank\" rel=\"noopener\" class=\"scan-lookup\">$1</a>");
+        return new MarkupString(html);
+    }
+
+    private static string? GetLookupUrl(TextCandidate c) => c switch
+    {
+        TextCandidate<SwedishOrganizationNumber> x => x.Value.ToAllabolagUrl(),
+        TextCandidate<EuVatNumber> x => x.Value.ToViesUrl(),
+        TextCandidate<LeiCode> x => x.Value.ToGleifUrl(),
+        TextCandidate<EmailAddress> x => x.Value.ToMailtoUri(),
+        TextCandidate<PhoneNumber> x => x.Value.ToTelUri(),
+        TextCandidate<Url> x => x.Value.ToNormalizedUrl(),
+        TextCandidate<Address> x => x.Value.ToGoogleMapsUrl(),
+        TextCandidate<SwedishAddress> x => x.Value.ToGoogleMapsUrl(),
+        TextCandidate<Country> x => x.Value.ToWikipediaUrl(),
+        TextCandidate<SwedishVehicleRegistrationNumber> x => x.Value.ToBiluppgifterUrl(),
+        TextCandidate<SwedishPropertyDesignation> x => x.Value.ToHittaUrl(),
+        TextCandidate<Gtin13> x => x.Value.ToBarcodeLookupUrl(),
+        TextCandidate<Gtin8> x => x.Value.ToBarcodeLookupUrl(),
+        TextCandidate<SwedishMunicipality> x => x.Value.ToWikipediaUrl(),
+        TextCandidate<SwedishCounty> x => x.Value.ToWikipediaUrl(),
+        _ => null
+    };
+
+    // ── Category / confidence helpers ──────────────────────────────
+
+    private static string GetCategoryClass(TextCandidateCategory cat) => cat switch
+    {
+        TextCandidateCategory.PersonalIdentifier => "cat-personal",
+        TextCandidateCategory.OrganizationIdentifier => "cat-org",
+        TextCandidateCategory.Financial => "cat-financial",
+        TextCandidateCategory.Contact => "cat-contact",
+        TextCandidateCategory.Vehicle => "cat-vehicle",
+        TextCandidateCategory.Property => "cat-property",
+        TextCandidateCategory.Product => "cat-product",
+        TextCandidateCategory.Geography => "cat-geography",
+        TextCandidateCategory.Measurement => "cat-measurement",
+        _ => ""
+    };
+
+    private static string GetCategoryBadgeClass(TextCandidateCategory cat) => cat switch
+    {
+        TextCandidateCategory.PersonalIdentifier => "bg-danger",
+        TextCandidateCategory.OrganizationIdentifier => "bg-primary",
+        TextCandidateCategory.Financial => "bg-success",
+        TextCandidateCategory.Contact => "bg-info text-dark",
+        TextCandidateCategory.Vehicle => "bg-warning text-dark",
+        TextCandidateCategory.Property => "bg-secondary",
+        TextCandidateCategory.Product => "bg-dark",
+        TextCandidateCategory.Geography => "bg-success-subtle text-success-emphasis",
+        TextCandidateCategory.Measurement => "bg-warning-subtle text-warning-emphasis",
+        _ => "bg-light text-dark"
+    };
+
+    private static string GetConfidenceBadge(TextMatchConfidence conf) => conf switch
+    {
+        TextMatchConfidence.High => "bg-success",
+        TextMatchConfidence.Medium => "bg-warning text-dark",
+        TextMatchConfidence.Low => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    // ── Example texts ──────────────────────────────────────────────
+
+    private static readonly (string Name, string Text)[] SampleTexts =
+    [
+        ("Swedish Companies",
+            "Telefonaktiebolaget LM Ericsson (org.nr 556016-0680) is one of Sweden's largest " +
+            "technology companies, headquartered at Torshamnsgatan 21, 164 83 Stockholm. " +
+            "Their VAT number is SE556016068001. For press inquiries, contact press@example.com " +
+            "or call +46 10 719 00 00. Supplier payments can be directed to bankgiro 5805-6201.\n\n" +
+            "AB Volvo (org.nr 556012-5790) is headquartered at Gropeg\u00e5rdsgatan 2, " +
+            "405 08 G\u00f6teborg. Contact their switchboard at +46 31 66 00 00 or visit " +
+            "https://www.example.com/volvo for more details."),
+
+        ("People & Vehicles",
+            "A Volvo with registration number ABC 123 was observed in central Stockholm. " +
+            "The registered owner, with personnummer 900101-0017, resides at Storgatan 45, " +
+            "114 53 Stockholm. For more information, contact +46 70 123 45 67 or email " +
+            "karin.andersson@example.org.\n\n" +
+            "The property Stockholm S\u00f6der 75:2 was recently listed for sale at " +
+            "https://www.example.com/properties/stockholm."),
+
+        ("Banking & Finance",
+            "Payment instructions: transfer to IBAN SE3550000000054910000003 (BIC: ESSESESS) " +
+            "at SEB. Alternatively, use plusgiro 236956-9 or bankgiro 5805-6201. " +
+            "The OCR reference for invoice #2024-001 is 1234567890128.\n\n" +
+            "For international regulatory filings, the LEI code for the receiving entity " +
+            "is 549300MLUDYVRQOOXS22. Questions? Email billing@example.com or call " +
+            "+46 8 763 80 00."),
+
+        ("Product & Measurements",
+            "The Volvo XC90 (Euro 6d) features a 2.0-liter engine producing 310 HP and " +
+            "400 Nm of torque. It weighs 2 185 kg and accelerates to 120 km/h in seconds. " +
+            "Tire dimensions: 275/45R20.\n\n" +
+            "Tech specs: 15.6\" screen at 1920x1080 resolution, 512 GB SSD, 16 GB RAM, " +
+            "5000 mAh battery, operating at 230 V. The device measures 35.6 cm wide, " +
+            "energy class A+, and runs at a comfortable 22 \u00b0C with 2.5 bar tire pressure.")
+    ];
+
+    // ── Type Explorer state ────────────────────────────────────────
+
+    private string[] typeInputs = [];
+
+    protected override void OnInitialized()
+    {
+        typeInputs = TypeRegistry.Select(t => t.SampleValue).ToArray();
+    }
+
+    // ── Municipality Graph ──────────────────────────────────────────
+
+    private bool graphInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !graphInitialized)
+        {
+            graphInitialized = true;
+
+            var nodesJson = JsonSerializer.Serialize(
+                SwedishMunicipality.All.Select(m => new
+                {
+                    code = m.Code,
+                    name = m.LocalizedName,
+                    lat = m.Latitude,
+                    lon = m.Longitude,
+                    county = m.CountyCode
+                }));
+
+            var countiesJson = JsonSerializer.Serialize(
+                SwedishMunicipality.All
+                    .Select(m => m.County)
+                    .DistinctBy(c => c.Code)
+                    .ToDictionary(
+                        c => c.Code,
+                        c => new { name = c.LocalizedName, color = CountyColors.GetValueOrDefault(c.Code, "#6c757d") }));
+
+            await JS.InvokeVoidAsync("municipalityGraph.init",
+                "municipality-graph-container", nodesJson, countiesJson);
+
+            var allCounties = SwedishMunicipality.All
+                .Select(m => m.County)
+                .DistinctBy(c => c.Code)
+                .OrderBy(c => c.Code)
+                .ToList();
+
+            var countyNodesJson = JsonSerializer.Serialize(
+                allCounties.Select(c => new
+                {
+                    code = c.Code,
+                    name = c.LocalizedName,
+                    lat = c.Latitude,
+                    lon = c.Longitude,
+                    color = CountyColors.GetValueOrDefault(c.Code, "#6c757d"),
+                    muniCount = c.GetMunicipalities().Count,
+                    municipalities = string.Join(", ", c.GetMunicipalities().Select(m => m.LocalizedName))
+                }));
+
+            var countyAdjacencyJson = JsonSerializer.Serialize(
+                allCounties.ToDictionary(
+                    c => c.Code,
+                    c => c.GetAdjacentCounties().Select(a => a.Code).ToArray()));
+
+            await JS.InvokeVoidAsync("countyGraph.init",
+                "county-graph-container", countyNodesJson, countyAdjacencyJson);
+
+            var countryNodesJson = JsonSerializer.Serialize(
+                Country.All
+                    .Where(c => c.Coordinate.Latitude != 0 || c.Coordinate.Longitude != 0)
+                    .Select(c => new
+                    {
+                        code = c.Alpha2Code,
+                        name = c.EnglishName,
+                        lat = c.Latitude,
+                        lon = c.Longitude,
+                        continent = c.Continent.EnglishName,
+                        capital = c.Capital?.EnglishName,
+                        capitalNative = c.Capital?.NativeName
+                    }));
+
+            var countryAdjacencyJson = JsonSerializer.Serialize(
+                Country.All.ToDictionary(
+                    c => c.Alpha2Code,
+                    c => c.GetBorderingCountries().Select(b => b.Alpha2Code).ToArray()));
+
+            var continentColorsJson = JsonSerializer.Serialize(ContinentColors);
+
+            await JS.InvokeVoidAsync("countryGraph.init",
+                "country-graph-container", countryNodesJson, countryAdjacencyJson, continentColorsJson);
+        }
+    }
+
+    // ── Neighbor Search ───────────────────────────────────────────
+
+    private string neighborSearchMuni = "0180";
+    private int neighborSearchRadius = 50;
+    private IReadOnlyList<MunicipalityDistance>? neighborResults;
+
+    private async Task RunNeighborSearch()
+    {
+        if (!SwedishMunicipality.TryParse(neighborSearchMuni, out var muni) || neighborSearchRadius < 1)
+        {
+            neighborResults = null;
+            return;
+        }
+
+        neighborResults = muni!.FindNeighbors(neighborSearchRadius);
+
+        var codes = neighborResults.Select(n => n.Municipality.Code).ToList();
+        codes.Insert(0, muni.Code);
+        await JS.InvokeVoidAsync("municipalityGraph.highlightCodes", codes.ToArray());
+    }
+
+    private static readonly Dictionary<string, string> CountyColors = new()
+    {
+        ["01"] = "#e63946", ["03"] = "#457b9d", ["04"] = "#2a9d8f", ["05"] = "#e9c46a",
+        ["06"] = "#f4a261", ["07"] = "#264653", ["08"] = "#a8dadc", ["09"] = "#6c757d",
+        ["10"] = "#d62828", ["12"] = "#023e8a", ["13"] = "#0077b6", ["14"] = "#06d6a0",
+        ["17"] = "#ef476f", ["18"] = "#ffd166", ["19"] = "#118ab2", ["20"] = "#073b4c",
+        ["21"] = "#e07a5f", ["22"] = "#81b29a", ["23"] = "#f2cc8f", ["24"] = "#3d405b",
+        ["25"] = "#9b5de5",
+    };
+
+    private static readonly Dictionary<string, string> ContinentColors = new()
+    {
+        ["Africa"] = "#e76f51",
+        ["Antarctica"] = "#adb5bd",
+        ["Asia"] = "#e9c46a",
+        ["Europe"] = "#457b9d",
+        ["North America"] = "#2a9d8f",
+        ["Oceania"] = "#9b5de5",
+        ["South America"] = "#06d6a0",
+    };
+
+    private sealed record TypeInfo(
+        string Name,
+        string Category,
+        string SampleValue,
+        Func<string?, bool> IsValidFn,
+        Func<string?, string?> FormatFn,
+        Func<string?, string?> NormalizeFn,
+        Func<string?, bool> IsNormalizedFn,
+        Func<string, string?> MaskedFn,
+        Func<string?, IReadOnlyList<string>?>? VariantsFn = null,
+        Func<string, string?>? NaturalFn = null,
+        PrimitiveTypeInfo? TypeMeta = null);
+
+    private static IReadOnlyList<string>? Metadata(params string?[] items)
+    {
+        var list = items.OfType<string>().ToList();
+        return list.Count > 0 ? list : null;
+    }
+
+    private static readonly TypeInfo[] TypeRegistry =
+    [
+        // ── Contact ──
+
+        new(nameof(EmailAddress), "Contact", "peter@example.com",
+            s => EmailAddress.IsValid(s),
+            s => EmailAddress.Format(s),
+            s => EmailAddress.Normalize(s),
+            s => EmailAddress.IsNormalized(s),
+            s => EmailAddress.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => EmailAddress.TryParse(s, out var v) ? Metadata($"Domain: {v!.Domain}", $"TLD: {v.TopLevelDomain}", v.Country is { } c ? $"Country: {c}" : null, v.Provider is { } p ? $"Provider: {p}" : null) : null,
+            TypeMeta: EmailAddress.TypeInfo),
+
+        new(nameof(PhoneNumber), "Contact", "+46 70 123 45 67",
+            s => PhoneNumber.IsValid(s),
+            s => PhoneNumber.Format(s),
+            s => PhoneNumber.Normalize(s),
+            s => PhoneNumber.IsNormalized(s),
+            s => PhoneNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => PhoneNumber.TryParse(s, out var v) ? Metadata(v!.Country is { } c ? $"Country: {c}" : null, $"CallingCode: +{v.CountryCallingCode}", v.IsMobile ? "Mobile: Yes" : null, v.IsSwedish ? "Swedish: Yes" : null) : null,
+            TypeMeta: PhoneNumber.TypeInfo),
+
+        new(nameof(Url), "Contact", "https://www.example.com/path",
+            s => Url.IsValid(s),
+            s => Url.Format(s),
+            s => Url.Normalize(s),
+            s => Url.IsNormalized(s),
+            s => Url.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Url.TryParse(s, out var v) ? Metadata($"Scheme: {v!.Scheme}", $"Host: {v.Host}", $"TLD: {v.TopLevelDomain}", v.Country is { } c ? $"Country: {c}" : null) : null,
+            TypeMeta: Url.TypeInfo),
+
+        new(nameof(AddressStreet), "Contact", "Storgatan 12",
+            s => AddressStreet.IsValid(s),
+            s => AddressStreet.Format(s),
+            s => AddressStreet.Normalize(s),
+            s => AddressStreet.IsNormalized(s),
+            s => AddressStreet.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => AddressStreet.TryParse(s, out var v) ? Metadata(v!.StreetName is { } sn ? $"Street: {sn}" : null, v.StreetNumber is { } num ? $"Number: {num}" : null) : null,
+            TypeMeta: AddressStreet.TypeInfo),
+
+        new(nameof(AddressZipCode), "Contact", "114 53",
+            s => AddressZipCode.IsValid(s),
+            s => AddressZipCode.Format(s),
+            s => AddressZipCode.Normalize(s),
+            s => AddressZipCode.IsNormalized(s),
+            s => AddressZipCode.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => AddressZipCode.TryParse(s, out var v) ? Metadata(v!.Country is { } c ? $"Country: {c}" : null) : null,
+            TypeMeta: AddressZipCode.TypeInfo),
+
+        new(nameof(SwedishAddressZipCode), "Contact", "114 53",
+            s => SwedishAddressZipCode.IsValid(s),
+            s => SwedishAddressZipCode.Format(s),
+            s => SwedishAddressZipCode.Normalize(s),
+            s => SwedishAddressZipCode.IsNormalized(s),
+            s => SwedishAddressZipCode.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: SwedishAddressZipCode.TypeInfo),
+
+        new(nameof(AddressCity), "Contact", "Stockholm",
+            s => AddressCity.IsValid(s),
+            s => AddressCity.Format(s),
+            s => AddressCity.Normalize(s),
+            s => AddressCity.IsNormalized(s),
+            s => AddressCity.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: AddressCity.TypeInfo),
+
+        new(nameof(Address), "Contact", "Storgatan 12, 114 53 Stockholm",
+            s => Address.IsValid(s),
+            s => Address.Format(s),
+            s => Address.Normalize(s),
+            s => Address.IsNormalized(s),
+            s => Address.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Address.TryParse(s, out var v) ? Metadata(v!.Street is { } st ? $"Street: {st}" : null, v.ZipCode is { } z ? $"Zip: {z}" : null, v.City is { } ci ? $"City: {ci}" : null, v.Country is { } co ? $"Country: {co}" : null) : null,
+            TypeMeta: Address.TypeInfo),
+
+        new(nameof(SwedishAddress), "Contact", "Storgatan 1, 114 53 Stockholm",
+            s => SwedishAddress.IsValid(s),
+            s => SwedishAddress.Format(s),
+            s => SwedishAddress.Normalize(s),
+            s => SwedishAddress.IsNormalized(s),
+            s => SwedishAddress.TryParse(s, out var v) ? v!.Address.ToMaskedString() : null,
+            s => SwedishAddress.TryParse(s, out var v) ? Metadata($"City: {v!.City}", $"Zip: {v.CountryZipCode.Formatted}", $"Country: {v.Country}") : null,
+            TypeMeta: SwedishAddress.TypeInfo),
+
+        new(nameof(PhoneCallingCode), "Contact", "+46",
+            s => PhoneCallingCode.IsValid(s),
+            s => PhoneCallingCode.Format(s),
+            s => PhoneCallingCode.Normalize(s),
+            s => PhoneCallingCode.IsNormalized(s),
+            _ => null,
+            s => PhoneCallingCode.TryParse(s, out var v) ? Metadata(v!.CountryCode is { } cc ? $"CountryCode: {cc}" : null) : null,
+            TypeMeta: PhoneCallingCode.TypeInfo),
+
+        // ── Person ──
+
+        new(nameof(SwedishPersonalIdentityNumber), "Person", "900101-0017",
+            s => SwedishPersonalIdentityNumber.IsValid(s),
+            s => SwedishPersonalIdentityNumber.Format(s),
+            s => SwedishPersonalIdentityNumber.Normalize(s),
+            s => SwedishPersonalIdentityNumber.IsNormalized(s),
+            s => SwedishPersonalIdentityNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishPersonalIdentityNumber.TryParse(s, out var v) ? Metadata($"Born: {v!.DateOfBirthHint:yyyy-MM-dd}", $"Age: {v.AgeHint}", $"Gender: {v.GenderHint}") : null,
+            TypeMeta: SwedishPersonalIdentityNumber.TypeInfo),
+
+        new(nameof(SwedishCoordinationNumber), "Person", "680164-2395",
+            s => SwedishCoordinationNumber.IsValid(s),
+            s => SwedishCoordinationNumber.Format(s),
+            s => SwedishCoordinationNumber.Normalize(s),
+            s => SwedishCoordinationNumber.IsNormalized(s),
+            s => SwedishCoordinationNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishCoordinationNumber.TryParse(s, out var v) ? Metadata(v!.DateOfBirthHint is { } dob ? $"Born: {dob:yyyy-MM-dd}" : null, v.AgeHint is { } age ? $"Age: {age}" : null, $"Gender: {v.GenderHint}") : null,
+            TypeMeta: SwedishCoordinationNumber.TypeInfo),
+
+        new(nameof(PersonGivenName), "Person", "Anna",
+            s => PersonGivenName.IsValid(s),
+            s => PersonGivenName.Format(s),
+            s => PersonGivenName.Normalize(s),
+            s => PersonGivenName.IsNormalized(s),
+            s => PersonGivenName.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => PersonGivenName.TryParse(s, out var v) ? Metadata($"Names: {string.Join(", ", v!.Names)}", v.PreferredName is { } pn ? $"Preferred: {pn}" : null) : null,
+            TypeMeta: PersonGivenName.TypeInfo),
+
+        new(nameof(PersonFamilyName), "Person", "Andersson",
+            s => PersonFamilyName.IsValid(s),
+            s => PersonFamilyName.Format(s),
+            s => PersonFamilyName.Normalize(s),
+            s => PersonFamilyName.IsNormalized(s),
+            s => PersonFamilyName.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: PersonFamilyName.TypeInfo),
+
+        new(nameof(PersonFullName), "Person", "Anna Andersson",
+            s => PersonFullName.IsValid(s),
+            s => PersonFullName.Format(s),
+            s => PersonFullName.Normalize(s),
+            s => PersonFullName.IsNormalized(s),
+            s => PersonFullName.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => PersonFullName.TryParse(s, out var v) ? Metadata($"Given: {v!.GivenName}", $"Family: {v.FamilyName}") : null,
+            TypeMeta: PersonFullName.TypeInfo),
+
+        new(nameof(PersonAge), "Person", "25 år",
+            s => PersonAge.IsValid(s),
+            s => PersonAge.Format(s),
+            s => PersonAge.Normalize(s),
+            s => PersonAge.IsNormalized(s),
+            s => PersonAge.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => PersonAge.TryParse(s, out var v) ? Metadata($"Years: {v!.Years}", $"Months: {v.TotalMonths}", $"Days: {v.TotalDays}", v.IsOfSwedishLegalAge ? "Myndig: Yes" : "Myndig: No") : null,
+            TypeMeta: PersonAge.TypeInfo),
+
+        // ── Organization ──
+
+        new(nameof(SwedishOrganizationNumber), "Organization", "556012-5790",
+            s => SwedishOrganizationNumber.IsValid(s),
+            s => SwedishOrganizationNumber.Format(s),
+            s => SwedishOrganizationNumber.Normalize(s),
+            s => SwedishOrganizationNumber.IsNormalized(s),
+            s => SwedishOrganizationNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishOrganizationNumber.TryParse(s, out var v) ? Metadata(v!.IsPerson ? "IsPerson: Yes" : "IsPerson: No", $"OrgType: {v.GetSwedishOrganizationTypeHint().BestGuess}") : null,
+            TypeMeta: SwedishOrganizationNumber.TypeInfo),
+
+        new(nameof(EuVatNumber), "Organization", "SE556012579001",
+            s => EuVatNumber.IsValid(s),
+            s => EuVatNumber.Format(s),
+            s => EuVatNumber.Normalize(s),
+            s => EuVatNumber.IsNormalized(s),
+            s => EuVatNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => EuVatNumber.TryParse(s, out var v) ? Metadata($"Country: {v!.CountryName}", $"CountryCode: {v.CountryCode}", $"Body: {v.Body}") : null,
+            TypeMeta: EuVatNumber.TypeInfo),
+
+        new(nameof(LeiCode), "Organization", "549300T5RZ1HA5HZ3109",
+            s => LeiCode.IsValid(s),
+            s => LeiCode.Format(s),
+            s => LeiCode.Normalize(s),
+            s => LeiCode.IsNormalized(s),
+            s => LeiCode.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: LeiCode.TypeInfo),
+
+        new(nameof(DunsNumber), "Organization", "350827673",
+            s => DunsNumber.IsValid(s),
+            s => DunsNumber.Format(s),
+            s => DunsNumber.Normalize(s),
+            s => DunsNumber.IsNormalized(s),
+            s => DunsNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: DunsNumber.TypeInfo),
+
+        new(nameof(SwedishOrganizationName), "Organization", "Budi Auktioner AB",
+            s => SwedishOrganizationName.IsValid(s),
+            s => SwedishOrganizationName.Format(s),
+            s => SwedishOrganizationName.Normalize(s),
+            s => SwedishOrganizationName.IsNormalized(s),
+            s => SwedishOrganizationName.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishOrganizationName.TryParse(s, out var v) ? Metadata(v!.HasOrganizationIndicators ? "HasIndicators: Yes" : "HasIndicators: No", $"InferredType: {v.InferredSwedishOrganizationType}") : null,
+            TypeMeta: SwedishOrganizationName.TypeInfo),
+
+        new(nameof(SwedishCfarNumber), "Organization", "55667788",
+            s => SwedishCfarNumber.IsValid(s),
+            s => SwedishCfarNumber.Format(s),
+            s => SwedishCfarNumber.Normalize(s),
+            s => SwedishCfarNumber.IsNormalized(s),
+            _ => null,
+            TypeMeta: SwedishCfarNumber.TypeInfo),
+
+        new(nameof(SwedishSniCode), "Organization", "62010",
+            s => SwedishSniCode.IsValid(s),
+            s => SwedishSniCode.Format(s),
+            s => SwedishSniCode.Normalize(s),
+            s => SwedishSniCode.IsNormalized(s),
+            _ => null,
+            s => SwedishSniCode.TryParse(s, out var v) ? Metadata($"Division: {v!.DivisionCode}", $"Group: {v.GroupCode}", $"SubGroup: {v.SubGroupCode}") : null,
+            TypeMeta: SwedishSniCode.TypeInfo),
+
+        new(nameof(ElfCode), "Organization", "XTIQ",
+            s => ElfCode.IsValid(s),
+            s => ElfCode.Format(s),
+            s => ElfCode.Normalize(s),
+            s => ElfCode.IsNormalized(s),
+            _ => null,
+            s => ElfCode.TryParse(s, out var v) ? Metadata(v!.EnglishName is { } en ? $"EN: {en}" : null, v.LocalizedName is { } ln ? $"SV: {ln}" : null) : null,
+            TypeMeta: ElfCode.TypeInfo),
+
+        // ── Banking ──
+
+        new(nameof(Iban), "Banking", "SE3550000000054910000003",
+            s => Iban.IsValid(s),
+            s => Iban.Format(s),
+            s => Iban.Normalize(s),
+            s => Iban.IsNormalized(s),
+            s => Iban.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Iban.TryParse(s, out var v) ? Metadata($"Country: {v!.CountryCode}") : null,
+            TypeMeta: Iban.TypeInfo),
+
+        new(nameof(Bic), "Banking", "ESSESESS",
+            s => Bic.IsValid(s),
+            s => Bic.Format(s),
+            s => Bic.Normalize(s),
+            s => Bic.IsNormalized(s),
+            s => Bic.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Bic.TryParse(s, out var v) ? Metadata($"Institution: {v!.InstitutionCode}", $"Country: {v.CountryCode}", $"Location: {v.LocationCode}", v.BranchCode is { } br ? $"Branch: {br}" : null) : null,
+            TypeMeta: Bic.TypeInfo),
+
+        new(nameof(SwedishBankgiroNumber), "Banking", "5805-6201",
+            s => SwedishBankgiroNumber.IsValid(s),
+            s => SwedishBankgiroNumber.Format(s),
+            s => SwedishBankgiroNumber.Normalize(s),
+            s => SwedishBankgiroNumber.IsNormalized(s),
+            s => SwedishBankgiroNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: SwedishBankgiroNumber.TypeInfo),
+
+        new(nameof(SwedishPostgiroNumber), "Banking", "236956-9",
+            s => SwedishPostgiroNumber.IsValid(s),
+            s => SwedishPostgiroNumber.Format(s),
+            s => SwedishPostgiroNumber.Normalize(s),
+            s => SwedishPostgiroNumber.IsNormalized(s),
+            s => SwedishPostgiroNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            TypeMeta: SwedishPostgiroNumber.TypeInfo),
+
+        new(nameof(SwedishBankAccount), "Banking", "70001234567",
+            s => SwedishBankAccount.IsValid(s),
+            s => SwedishBankAccount.Format(s),
+            s => SwedishBankAccount.Normalize(s),
+            s => SwedishBankAccount.IsNormalized(s),
+            s => SwedishBankAccount.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishBankAccount.TryParse(s, out var v) ? Metadata($"Bank: {v!.Clearing.BankName}", $"Clearing: {v.Clearing.Digits}", $"Account: {v.AccountNumber}") : null,
+            TypeMeta: SwedishBankAccount.TypeInfo),
+
+        new(nameof(SwedishBankClearingNumber), "Banking", "5001",
+            s => SwedishBankClearingNumber.IsValid(s),
+            s => SwedishBankClearingNumber.Format(s),
+            s => SwedishBankClearingNumber.Normalize(s),
+            s => SwedishBankClearingNumber.IsNormalized(s),
+            s => SwedishBankClearingNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishBankClearingNumber.TryParse(s, out var v) ? Metadata($"Bank: {v!.BankName}", $"BankCode: {v.Bank}") : null,
+            TypeMeta: SwedishBankClearingNumber.TypeInfo),
+
+        new(nameof(SwedishOcrReferenceNumber), "Banking", "123455",
+            s => SwedishOcrReferenceNumber.IsValid(s),
+            s => SwedishOcrReferenceNumber.Format(s),
+            s => SwedishOcrReferenceNumber.Normalize(s),
+            s => SwedishOcrReferenceNumber.IsNormalized(s),
+            s => SwedishOcrReferenceNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishOcrReferenceNumber.TryParse(s, out var v) ? Metadata(v!.LengthDigit is { } ld ? $"LengthDigit: {ld}" : "LengthDigit: N/A") : null,
+            TypeMeta: SwedishOcrReferenceNumber.TypeInfo),
+
+        new(nameof(SwedishBankAccountHolderName), "Banking", "Anna Andersson",
+            s => SwedishBankAccountHolderName.IsValid(s),
+            s => SwedishBankAccountHolderName.Format(s),
+            s => SwedishBankAccountHolderName.Normalize(s),
+            s => SwedishBankAccountHolderName.IsNormalized(s),
+            s => SwedishBankAccountHolderName.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishBankAccountHolderName.TryParse(s, out var v) ? Metadata($"HolderType: {v!.HolderType}") : null,
+            TypeMeta: SwedishBankAccountHolderName.TypeInfo),
+
+        new(nameof(SwedishSwishNumber), "Banking", "1236652895",
+            s => SwedishSwishNumber.IsValid(s),
+            s => SwedishSwishNumber.Format(s),
+            s => SwedishSwishNumber.Normalize(s),
+            s => SwedishSwishNumber.IsNormalized(s),
+            s => SwedishSwishNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishSwishNumber.TryParse(s, out var v) ? Metadata(v!.IsSwish123 ? "Type: Swish123" : null, v.IsMobileNumber ? "Mobile: Yes" : null, v.Is90Number ? "90-number: Yes" : null) : null,
+            TypeMeta: SwedishSwishNumber.TypeInfo),
+
+        // ── Vehicle ──
+
+        new(nameof(SwedishVehicleRegistrationNumber), "Vehicle", "ABC 123",
+            s => SwedishVehicleRegistrationNumber.IsValid(s),
+            s => SwedishVehicleRegistrationNumber.Format(s),
+            s => SwedishVehicleRegistrationNumber.Normalize(s),
+            s => SwedishVehicleRegistrationNumber.IsNormalized(s),
+            s => SwedishVehicleRegistrationNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishVehicleRegistrationNumber.TryParse(s, out var v) ? Metadata($"Letters: {v!.Letters}", $"Suffix: {v.Suffix}", v.IsNewFormat ? "Format: New" : "Format: Old") : null,
+            TypeMeta: SwedishVehicleRegistrationNumber.TypeInfo),
+
+        new(nameof(VehicleIdentificationNumber), "Vehicle", "WBA3A5C55CF256789",
+            s => VehicleIdentificationNumber.IsValid(s),
+            s => VehicleIdentificationNumber.Format(s),
+            s => VehicleIdentificationNumber.Normalize(s),
+            s => VehicleIdentificationNumber.IsNormalized(s),
+            s => VehicleIdentificationNumber.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => VehicleIdentificationNumber.TryParse(s, out var v) ? Metadata($"WMI: {v!.Wmi}", $"ModelYear: {v.ModelYearCode}", v.HasValidCheckDigit ? "CheckDigit: Valid" : "CheckDigit: N/A") : null,
+            TypeMeta: VehicleIdentificationNumber.TypeInfo),
+
+        new(nameof(EuroEmissionClass), "Vehicle", "Euro 6",
+            s => EuroEmissionClass.IsValid(s),
+            s => EuroEmissionClass.Format(s),
+            s => EuroEmissionClass.Normalize(s),
+            s => EuroEmissionClass.IsNormalized(s),
+            _ => null,
+            s => EuroEmissionClass.TryParse(s, out var v) ? Metadata($"Level: {v!.Level}", v.SubLevel is { } sl ? $"SubLevel: {sl}" : null, $"Miljöklass: {v.SwedishMiljoklass}", $"Intro: {v.IntroductionYear}") : null,
+            TypeMeta: EuroEmissionClass.TypeInfo),
+
+        new(nameof(TireDimension), "Vehicle", "205/55R16",
+            s => TireDimension.IsValid(s),
+            s => TireDimension.Format(s),
+            s => TireDimension.Normalize(s),
+            s => TireDimension.IsNormalized(s),
+            s => TireDimension.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => TireDimension.TryParse(s, out var v) ? Metadata($"Width: {v!.WidthMm} mm", $"Aspect: {v.AspectRatio}", $"Rim: {v.RimDiameterInches}\"", v.SpeedRating is { } sr ? $"Speed: {sr}" : null) : null,
+            TypeMeta: TireDimension.TypeInfo),
+
+        new(nameof(FuelType), "Vehicle", "Bensin",
+            s => FuelType.IsValid(s),
+            s => FuelType.Format(s),
+            s => FuelType.Normalize(s),
+            s => FuelType.IsNormalized(s),
+            _ => null,
+            s => FuelType.TryParse(s, out var v) ? Metadata($"Code: {v!.Code}", $"EN: {v.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: FuelType.TypeInfo),
+
+        new(nameof(TransmissionType), "Vehicle", "Manual",
+            s => TransmissionType.IsValid(s),
+            s => TransmissionType.Format(s),
+            s => TransmissionType.Normalize(s),
+            s => TransmissionType.IsNormalized(s),
+            _ => null,
+            s => TransmissionType.TryParse(s, out var v) ? Metadata($"EN: {v!.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: TransmissionType.TypeInfo),
+
+        new(nameof(SwedishVehicleType), "Vehicle", "PB",
+            s => SwedishVehicleType.IsValid(s),
+            s => SwedishVehicleType.Format(s),
+            s => SwedishVehicleType.Normalize(s),
+            s => SwedishVehicleType.IsNormalized(s),
+            _ => null,
+            s => SwedishVehicleType.TryParse(s, out var v) ? Metadata($"EN: {v!.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: SwedishVehicleType.TypeInfo),
+
+        new(nameof(SwedishVehicleStatus), "Vehicle", "I trafik",
+            s => SwedishVehicleStatus.IsValid(s),
+            s => SwedishVehicleStatus.Format(s),
+            s => SwedishVehicleStatus.Normalize(s),
+            s => SwedishVehicleStatus.IsNormalized(s),
+            _ => null,
+            s => SwedishVehicleStatus.TryParse(s, out var v) ? Metadata($"EN: {v!.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: SwedishVehicleStatus.TypeInfo),
+
+        new(nameof(SwedishDrivingLicenseCategory), "Vehicle", "B",
+            s => SwedishDrivingLicenseCategory.IsValid(s),
+            s => SwedishDrivingLicenseCategory.Format(s),
+            s => SwedishDrivingLicenseCategory.Normalize(s),
+            s => SwedishDrivingLicenseCategory.IsNormalized(s),
+            _ => null,
+            s => SwedishDrivingLicenseCategory.TryParse(s, out var v) ? Metadata($"SV: {v!.LocalizedName}", $"MinAge: {v.MinimumAge}", $"Group: {v.VehicleGroup}") : null,
+            TypeMeta: SwedishDrivingLicenseCategory.TypeInfo),
+
+        new(nameof(EuVehicleCategory), "Vehicle", "M1",
+            s => EuVehicleCategory.IsValid(s),
+            s => EuVehicleCategory.Format(s),
+            s => EuVehicleCategory.Normalize(s),
+            s => EuVehicleCategory.IsNormalized(s),
+            _ => null,
+            s => EuVehicleCategory.TryParse(s, out var v) ? Metadata($"EN: {v!.EnglishDescription}", $"SV: {v.LocalizedDescription}", v.IsOffRoad ? "OffRoad: Yes" : null) : null,
+            TypeMeta: EuVehicleCategory.TypeInfo),
+
+        new(nameof(EuTypeApprovalNumber), "Vehicle", "e9*2007/46*6364*09",
+            s => EuTypeApprovalNumber.IsValid(s),
+            s => EuTypeApprovalNumber.Format(s),
+            s => EuTypeApprovalNumber.Normalize(s),
+            s => EuTypeApprovalNumber.IsNormalized(s),
+            _ => null,
+            s => EuTypeApprovalNumber.TryParse(s, out var v) ? Metadata(v!.ApprovalCountryName is { } cn ? $"Country: {cn}" : $"CountryCode: {v.ApprovalCountryCode}", $"Directive: {v.Directive}") : null,
+            TypeMeta: EuTypeApprovalNumber.TypeInfo),
+
+        new(nameof(EnginePower), "Vehicle", "150 hp",
+            s => EnginePower.IsValid(s),
+            s => EnginePower.Format(s),
+            s => EnginePower.Normalize(s),
+            s => EnginePower.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => EnginePower.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: EnginePower.TypeInfo),
+
+        new(nameof(EngineDisplacement), "Vehicle", "1998 cc",
+            s => EngineDisplacement.IsValid(s),
+            s => EngineDisplacement.Format(s),
+            s => EngineDisplacement.Normalize(s),
+            s => EngineDisplacement.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => EngineDisplacement.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: EngineDisplacement.TypeInfo),
+
+        new(nameof(FuelConsumption), "Vehicle", "8.3 l/100km",
+            s => FuelConsumption.IsValid(s),
+            s => FuelConsumption.Format(s),
+            s => FuelConsumption.Normalize(s),
+            s => FuelConsumption.IsNormalized(s),
+            _ => null,
+            TypeMeta: FuelConsumption.TypeInfo),
+
+        new(nameof(EmissionRate), "Vehicle", "221 g/km",
+            s => EmissionRate.IsValid(s),
+            s => EmissionRate.Format(s),
+            s => EmissionRate.Normalize(s),
+            s => EmissionRate.IsNormalized(s),
+            _ => null,
+            s => EmissionRate.TryParse(s, out var v) ? Metadata($"g/km: {v!.GramsPerKm}") : null,
+            TypeMeta: EmissionRate.TypeInfo),
+
+        new(nameof(OdometerReading), "Vehicle", "15000 km",
+            s => OdometerReading.IsValid(s),
+            s => OdometerReading.Format(s),
+            s => OdometerReading.Normalize(s),
+            s => OdometerReading.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => OdometerReading.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: OdometerReading.TypeInfo),
+
+        new(nameof(WheelRimDimension), "Vehicle", "18x7J",
+            s => WheelRimDimension.IsValid(s),
+            s => WheelRimDimension.Format(s),
+            s => WheelRimDimension.Normalize(s),
+            s => WheelRimDimension.IsNormalized(s),
+            _ => null,
+            s => WheelRimDimension.TryParse(s, out var v) ? Metadata($"Diameter: {v!.DiameterInches}\"", $"Width: {v.WidthInches}\"", $"Flange: {v.FlangeType}") : null,
+            TypeMeta: WheelRimDimension.TypeInfo),
+
+        new(nameof(OperatingHours), "Vehicle", "1234 h",
+            s => OperatingHours.IsValid(s),
+            s => OperatingHours.Format(s),
+            s => OperatingHours.Normalize(s),
+            s => OperatingHours.IsNormalized(s),
+            s => OperatingHours.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => OperatingHours.TryParse(s, out var v) ? Metadata($"Hours: {v!.Hours}") : null,
+            TypeMeta: OperatingHours.TypeInfo),
+
+        new(nameof(BoltPattern), "Vehicle", "5x114.3",
+            s => BoltPattern.IsValid(s),
+            s => BoltPattern.Format(s),
+            s => BoltPattern.Normalize(s),
+            s => BoltPattern.IsNormalized(s),
+            s => BoltPattern.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => BoltPattern.TryParse(s, out var v) ? Metadata($"Bolts: {v!.BoltCount}", $"PCD: {v.PitchCircleDiameter} mm") : null,
+            TypeMeta: BoltPattern.TypeInfo),
+
+        // ── Property ──
+
+        new(nameof(SwedishPropertyDesignation), "Property", "Stockholm Söder 75:2",
+            s => SwedishPropertyDesignation.IsValid(s),
+            s => SwedishPropertyDesignation.Format(s),
+            s => SwedishPropertyDesignation.Normalize(s),
+            s => SwedishPropertyDesignation.IsNormalized(s),
+            s => SwedishPropertyDesignation.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishPropertyDesignation.TryParse(s, out var v) ? Metadata($"Name: {v!.DesignationName}", $"Register: {v.RegisterNumber}") : null,
+            TypeMeta: SwedishPropertyDesignation.TypeInfo),
+
+        new(nameof(SwedishPropertyTaxationCode), "Property", "220",
+            s => SwedishPropertyTaxationCode.IsValid(s),
+            s => SwedishPropertyTaxationCode.Format(s),
+            s => SwedishPropertyTaxationCode.Normalize(s),
+            s => SwedishPropertyTaxationCode.IsNormalized(s),
+            _ => null,
+            s => SwedishPropertyTaxationCode.TryParse(s, out var v) ? Metadata($"Category: {v!.Category}", v.LocalizedDescription is { } ld ? $"SV: {ld}" : null, v.EnglishDescription is { } ed ? $"EN: {ed}" : null) : null,
+            TypeMeta: SwedishPropertyTaxationCode.TypeInfo),
+
+        // ── Product ──
+
+        new(nameof(Gtin), "Product", "5901234123457",
+            s => Gtin.IsValid(s),
+            s => Gtin.Format(s),
+            s => Gtin.Normalize(s),
+            s => Gtin.IsNormalized(s),
+            _ => null,
+            s => Gtin.TryParse(s, out var v) ? Metadata($"Length: {v!.Length}", $"Check: {v.CheckDigit}") : null,
+            TypeMeta: Gtin.TypeInfo),
+
+        new(nameof(Gtin8), "Product", "96385074",
+            s => Gtin8.IsValid(s),
+            s => Gtin8.Format(s),
+            s => Gtin8.Normalize(s),
+            s => Gtin8.IsNormalized(s),
+            s => Gtin8.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Gtin8.TryParse(s, out var v) ? Metadata($"Check: {v!.CheckDigit}") : null,
+            TypeMeta: Gtin8.TypeInfo),
+
+        new(nameof(Gtin12), "Product", "012345678905",
+            s => Gtin12.IsValid(s),
+            s => Gtin12.Format(s),
+            s => Gtin12.Normalize(s),
+            s => Gtin12.IsNormalized(s),
+            _ => null,
+            s => Gtin12.TryParse(s, out var v) ? Metadata($"Check: {v!.CheckDigit}") : null,
+            TypeMeta: Gtin12.TypeInfo),
+
+        new(nameof(Gtin13), "Product", "5901234123457",
+            s => Gtin13.IsValid(s),
+            s => Gtin13.Format(s),
+            s => Gtin13.Normalize(s),
+            s => Gtin13.IsNormalized(s),
+            s => Gtin13.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Gtin13.TryParse(s, out var v) ? Metadata($"GS1: {v!.Gs1Prefix}", v.Gs1PrefixName is { } pn ? $"Prefix: {pn}" : null, v.Gs1PrefixCountryCode is { } cc ? $"Country: {cc}" : null) : null,
+            TypeMeta: Gtin13.TypeInfo),
+
+        new(nameof(Gtin14), "Product", "10614141000415",
+            s => Gtin14.IsValid(s),
+            s => Gtin14.Format(s),
+            s => Gtin14.Normalize(s),
+            s => Gtin14.IsNormalized(s),
+            _ => null,
+            s => Gtin14.TryParse(s, out var v) ? Metadata($"Indicator: {v!.IndicatorDigit}", $"Inner: {v.InnerGtin13Digits}") : null,
+            TypeMeta: Gtin14.TypeInfo),
+
+        new(nameof(GoogleProductCategory), "Product", "Electronics > Computers > Laptops",
+            s => GoogleProductCategory.IsValid(s),
+            s => GoogleProductCategory.Format(s),
+            s => GoogleProductCategory.Normalize(s),
+            s => GoogleProductCategory.IsNormalized(s),
+            _ => null,
+            s => GoogleProductCategory.TryParse(s, out var v) ? Metadata($"Root: {v!.RootCategory}", $"Leaf: {v.LeafCategory}", $"Depth: {v.Depth}") : null,
+            TypeMeta: GoogleProductCategory.TypeInfo),
+
+        new(nameof(HsCode), "Product", "8471.30",
+            s => HsCode.IsValid(s),
+            s => HsCode.Format(s),
+            s => HsCode.Normalize(s),
+            s => HsCode.IsNormalized(s),
+            _ => null,
+            s => HsCode.TryParse(s, out var v) ? Metadata($"Chapter: {v!.Chapter}", $"Level: {v.Level}") : null,
+            TypeMeta: HsCode.TypeInfo),
+
+        new(nameof(Color), "Product", "red",
+            s => Color.IsValid(s),
+            s => Color.Format(s),
+            s => Color.Normalize(s),
+            s => Color.IsNormalized(s),
+            s => Color.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Color.TryParse(s, out var v) ? Metadata($"Hex: {v!.Hex}", $"RGB: {v.R},{v.G},{v.B}", v.NameEnglish is { } en ? $"EN: {en}" : null, v.NameSwedish is { } sv ? $"SV: {sv}" : null) : null,
+            TypeMeta: Color.TypeInfo),
+
+        new(nameof(AdultClothingSize), "Product", "M",
+            s => AdultClothingSize.IsValid(s),
+            s => AdultClothingSize.Format(s),
+            s => AdultClothingSize.Normalize(s),
+            s => AdultClothingSize.IsNormalized(s),
+            _ => null,
+            s => AdultClothingSize.TryParse(s, out var v) ? Metadata($"EU: {v!.EuSize}", v.LetterSize is { } ls ? $"Letter: {ls}" : null) : null,
+            TypeMeta: AdultClothingSize.TypeInfo),
+
+        new(nameof(ChildClothingSize), "Product", "120",
+            s => ChildClothingSize.IsValid(s),
+            s => ChildClothingSize.Format(s),
+            s => ChildClothingSize.Normalize(s),
+            s => ChildClothingSize.IsNormalized(s),
+            _ => null,
+            s => ChildClothingSize.TryParse(s, out var v) ? Metadata($"Height: {v!.HeightCm} cm", $"EU: {v.EuSize}", $"Age: {v.AgeRange}") : null,
+            TypeMeta: ChildClothingSize.TypeInfo),
+
+        new(nameof(ClothingSize), "Product", "L",
+            s => ClothingSize.IsValid(s),
+            s => ClothingSize.Format(s),
+            s => ClothingSize.Normalize(s),
+            s => ClothingSize.IsNormalized(s),
+            _ => null,
+            s => ClothingSize.TryParse(s, out var v) ? Metadata(v!.IsAdult ? "Type: Adult" : "Type: Child") : null,
+            TypeMeta: ClothingSize.TypeInfo),
+
+        new(nameof(AdultShoeSize), "Product", "42",
+            s => AdultShoeSize.IsValid(s),
+            s => AdultShoeSize.Format(s),
+            s => AdultShoeSize.Normalize(s),
+            s => AdultShoeSize.IsNormalized(s),
+            _ => null,
+            s => AdultShoeSize.TryParse(s, out var v) ? Metadata($"EU: {v!.EuSize}", $"UK: {v.UkSize}") : null,
+            TypeMeta: AdultShoeSize.TypeInfo),
+
+        new(nameof(ChildShoeSize), "Product", "28",
+            s => ChildShoeSize.IsValid(s),
+            s => ChildShoeSize.Format(s),
+            s => ChildShoeSize.Normalize(s),
+            s => ChildShoeSize.IsNormalized(s),
+            _ => null,
+            s => ChildShoeSize.TryParse(s, out var v) ? Metadata($"EU: {v!.EuSize}", $"US: {v.UsSize}", $"UK: {v.UkSize}") : null,
+            TypeMeta: ChildShoeSize.TypeInfo),
+
+        new(nameof(ShoeSize), "Product", "42",
+            s => ShoeSize.IsValid(s),
+            s => ShoeSize.Format(s),
+            s => ShoeSize.Normalize(s),
+            s => ShoeSize.IsNormalized(s),
+            _ => null,
+            s => ShoeSize.TryParse(s, out var v) ? Metadata(v!.IsAdult ? "Type: Adult" : "Type: Child") : null,
+            TypeMeta: ShoeSize.TypeInfo),
+
+        new(nameof(ScreenSize), "Product", "27",
+            s => ScreenSize.IsValid(s),
+            s => ScreenSize.Format(s),
+            s => ScreenSize.Normalize(s),
+            s => ScreenSize.IsNormalized(s),
+            _ => null,
+            s => ScreenSize.TryParse(s, out var v) ? Metadata($"Diagonal: {v!.Diagonal}") : null,
+            TypeMeta: ScreenSize.TypeInfo),
+
+        new(nameof(ScreenResolution), "Product", "1920x1080",
+            s => ScreenResolution.IsValid(s),
+            s => ScreenResolution.Format(s),
+            s => ScreenResolution.Normalize(s),
+            s => ScreenResolution.IsNormalized(s),
+            s => ScreenResolution.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => ScreenResolution.TryParse(s, out var v) ? Metadata($"W: {v!.Width}", $"H: {v.Height}", $"Ratio: {v.AspectRatio}", v.Name is { } n ? $"Name: {n}" : null) : null,
+            TypeMeta: ScreenResolution.TypeInfo),
+
+        new(nameof(EuEnergyEfficiencyClass), "Product", "A+",
+            s => EuEnergyEfficiencyClass.IsValid(s),
+            s => EuEnergyEfficiencyClass.Format(s),
+            s => EuEnergyEfficiencyClass.Normalize(s),
+            s => EuEnergyEfficiencyClass.IsNormalized(s),
+            _ => null,
+            s => EuEnergyEfficiencyClass.TryParse(s, out var v) ? Metadata($"Label: {v!.Label}", $"Scale: {v.Scale}", $"Rank: {v.NumericRank}") : null,
+            TypeMeta: EuEnergyEfficiencyClass.TypeInfo),
+
+        new(nameof(ClothingGender), "Product", "Herr",
+            s => ClothingGender.IsValid(s),
+            s => ClothingGender.Format(s),
+            s => ClothingGender.Normalize(s),
+            s => ClothingGender.IsNormalized(s),
+            _ => null,
+            s => ClothingGender.TryParse(s, out var v) ? Metadata($"EN: {v!.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: ClothingGender.TypeInfo),
+
+        new(nameof(ElectricalPhase), "Product", "1-phase",
+            s => ElectricalPhase.IsValid(s),
+            s => ElectricalPhase.Format(s),
+            s => ElectricalPhase.Normalize(s),
+            s => ElectricalPhase.IsNormalized(s),
+            _ => null,
+            s => ElectricalPhase.TryParse(s, out var v) ? Metadata($"Phases: {v!.PhaseCount}", $"EN: {v.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: ElectricalPhase.TypeInfo),
+
+        new(nameof(BatteryCapacity), "Product", "5000 mAh",
+            s => BatteryCapacity.IsValid(s),
+            s => BatteryCapacity.Format(s),
+            s => BatteryCapacity.Normalize(s),
+            s => BatteryCapacity.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => BatteryCapacity.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: BatteryCapacity.TypeInfo),
+
+        new(nameof(ProcessorSpeed), "Product", "3.5 GHz",
+            s => ProcessorSpeed.IsValid(s),
+            s => ProcessorSpeed.Format(s),
+            s => ProcessorSpeed.Normalize(s),
+            s => ProcessorSpeed.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => ProcessorSpeed.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: ProcessorSpeed.TypeInfo),
+
+        new(nameof(RamCapacity), "Product", "16 GB",
+            s => RamCapacity.IsValid(s),
+            s => RamCapacity.Format(s),
+            s => RamCapacity.Normalize(s),
+            s => RamCapacity.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => RamCapacity.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: RamCapacity.TypeInfo),
+
+        new(nameof(StorageCapacity), "Product", "512 GB",
+            s => StorageCapacity.IsValid(s),
+            s => StorageCapacity.Format(s),
+            s => StorageCapacity.Normalize(s),
+            s => StorageCapacity.IsNormalized(s),
+            _ => null,
+            NaturalFn: s => StorageCapacity.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: StorageCapacity.TypeInfo),
+
+        new(nameof(OperatingSystemInfo), "Product", "Windows 11",
+            s => OperatingSystemInfo.IsValid(s),
+            s => OperatingSystemInfo.Format(s),
+            s => OperatingSystemInfo.Normalize(s),
+            s => OperatingSystemInfo.IsNormalized(s),
+            _ => null,
+            s => OperatingSystemInfo.TryParse(s, out var v) ? Metadata($"Family: {v!.Name.Family}", v.Version is { } ver ? $"Version: {ver}" : null) : null,
+            TypeMeta: OperatingSystemInfo.TypeInfo),
+
+        new(nameof(OperatingSystemName), "Product", "macOS",
+            s => OperatingSystemName.IsValid(s),
+            s => OperatingSystemName.Format(s),
+            s => OperatingSystemName.Normalize(s),
+            s => OperatingSystemName.IsNormalized(s),
+            _ => null,
+            s => OperatingSystemName.TryParse(s, out var v) ? Metadata($"Family: {v!.Family}") : null,
+            TypeMeta: OperatingSystemName.TypeInfo),
+
+        new(nameof(OperatingSystemVersion), "Product", "14.5",
+            s => OperatingSystemVersion.IsValid(s),
+            s => OperatingSystemVersion.Format(s),
+            s => OperatingSystemVersion.Normalize(s),
+            s => OperatingSystemVersion.IsNormalized(s),
+            _ => null,
+            s => OperatingSystemVersion.TryParse(s, out var v) ? Metadata($"Major: {v!.Major}", v.Minor is { } mi ? $"Minor: {mi}" : null, v.Patch is { } pa ? $"Patch: {pa}" : null) : null,
+            TypeMeta: OperatingSystemVersion.TypeInfo),
+
+        new(nameof(IpRating), "Product", "IP65",
+            s => IpRating.IsValid(s),
+            s => IpRating.Format(s),
+            s => IpRating.Normalize(s),
+            s => IpRating.IsNormalized(s),
+            s => IpRating.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => IpRating.TryParse(s, out var v) ? Metadata($"Solids: {v!.SolidsDescription}", $"Liquids: {v.LiquidsDescription}") : null,
+            TypeMeta: IpRating.TypeInfo),
+
+        // ── Geography ──
+
+        new(nameof(SwedishMunicipality), "Geography", "Stockholm",
+            s => SwedishMunicipality.IsValid(s),
+            s => SwedishMunicipality.Format(s),
+            s => SwedishMunicipality.Normalize(s),
+            s => SwedishMunicipality.IsNormalized(s),
+            s => SwedishMunicipality.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishMunicipality.TryParse(s, out var v) ? Metadata($"Code: {v!.Code}", $"County: {v.County}", $"Coord: {v.Coordinate}") : null,
+            TypeMeta: SwedishMunicipality.TypeInfo),
+
+        new(nameof(SwedishCounty), "Geography", "Stockholms län",
+            s => SwedishCounty.IsValid(s),
+            s => SwedishCounty.Format(s),
+            s => SwedishCounty.Normalize(s),
+            s => SwedishCounty.IsNormalized(s),
+            s => SwedishCounty.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => SwedishCounty.TryParse(s, out var v) ? Metadata($"Code: {v!.Code}", $"EN: {v.EnglishName}", $"Coord: {v.Coordinate}") : null,
+            TypeMeta: SwedishCounty.TypeInfo),
+
+        new(nameof(Country), "Geography", "Sweden",
+            s => Country.IsValid(s),
+            s => Country.Format(s),
+            s => Country.Normalize(s),
+            s => Country.IsNormalized(s),
+            _ => null,
+            s => Country.TryParse(s, out var v) ? Metadata($"Alpha2: {v!.Alpha2Code}", $"Alpha3: {v.Alpha3Code}", $"Calling: +{v.CallingCode}", $"Continent: {v.Continent}", v.Capital is { } cap ? $"Capital: {cap.EnglishName}" : null, $"Coord: {v.Coordinate}", v.CurrencyCode is { } cc ? $"Currency: {cc}" : null) : null,
+            TypeMeta: Country.TypeInfo),
+
+        new(nameof(Language), "Geography", "Swedish",
+            s => Language.IsValid(s),
+            s => Language.Format(s),
+            s => Language.Normalize(s),
+            s => Language.IsNormalized(s),
+            s => Language.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Language.TryParse(s, out var v) ? Metadata($"639-1: {v!.Alpha2Code}", $"639-2/T: {v.Alpha3Code}", $"Native: {v.NativeName}", $"Script: {v.Script}", $"Direction: {v.Direction}") : null,
+            TypeMeta: Language.TypeInfo),
+
+        new(nameof(Continent), "Geography", "Europa",
+            s => Continent.IsValid(s),
+            s => Continent.Format(s),
+            s => Continent.Normalize(s),
+            s => Continent.IsNormalized(s),
+            _ => null,
+            s => Continent.TryParse(s, out var v) ? Metadata($"Code: {v!.Code}", $"EN: {v.EnglishName}", $"SV: {v.LocalizedName}") : null,
+            TypeMeta: Continent.TypeInfo),
+
+        new(nameof(GeoCoordinate), "Geography", "59.3293, 18.0686",
+            s => GeoCoordinate.IsValid(s),
+            s => GeoCoordinate.Format(s),
+            s => GeoCoordinate.Normalize(s),
+            s => GeoCoordinate.IsNormalized(s),
+            s => GeoCoordinate.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => GeoCoordinate.TryParse(s, out var v) ? Metadata($"Lat: {v!.Latitude}", $"Lon: {v.Longitude}") : null,
+            TypeMeta: GeoCoordinate.TypeInfo),
+
+        // ── Finance ──
+
+        new(nameof(Currency), "Finance", "SEK",
+            s => Currency.IsValid(s),
+            s => Currency.Format(s),
+            s => Currency.Normalize(s),
+            s => Currency.IsNormalized(s),
+            _ => null,
+            s => Currency.TryParse(s, out var v) ? Metadata($"Symbol: {v!.Symbol}", $"EN: {v.EnglishName}", $"SV: {v.LocalizedName}", $"Decimals: {v.DecimalPlaces}") : null,
+            TypeMeta: Currency.TypeInfo),
+
+        new(nameof(MoneyAmount), "Finance", "1000 SEK",
+            s => MoneyAmount.IsValid(s),
+            s => MoneyAmount.Format(s),
+            s => MoneyAmount.Normalize(s),
+            s => MoneyAmount.IsNormalized(s),
+            s => MoneyAmount.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => MoneyAmount.TryParse(s, out var v) ? Metadata($"Amount: {v!.Amount}", $"Currency: {v.Currency}") : null,
+            TypeMeta: MoneyAmount.TypeInfo),
+
+        new(nameof(Isin), "Finance", "SE0000108656",
+            s => Isin.IsValid(s),
+            s => Isin.Format(s),
+            s => Isin.Normalize(s),
+            s => Isin.IsNormalized(s),
+            s => Isin.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Isin.TryParse(s, out var v) ? Metadata($"Country: {v!.CountryCode}", $"NSIN: {v.Nsin}", $"Check: {v.CheckDigit}") : null,
+            TypeMeta: Isin.TypeInfo),
+
+        // ── Measurement ──
+
+        new(nameof(Length), "Measurement", "10 km",
+            s => Length.IsValid(s),
+            s => Length.Format(s),
+            s => Length.Normalize(s),
+            s => Length.IsNormalized(s),
+            s => Length.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Length.TryParse(s, out var v) ? LengthUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Length.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Length.TypeInfo),
+
+        new(nameof(Area), "Measurement", "75 m²",
+            s => Area.IsValid(s),
+            s => Area.Format(s),
+            s => Area.Normalize(s),
+            s => Area.IsNormalized(s),
+            s => Area.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Area.TryParse(s, out var v) ? AreaUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Area.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Area.TypeInfo),
+
+        new(nameof(Volume), "Measurement", "2.5 L",
+            s => Volume.IsValid(s),
+            s => Volume.Format(s),
+            s => Volume.Normalize(s),
+            s => Volume.IsNormalized(s),
+            s => Volume.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Volume.TryParse(s, out var v) ? VolumeUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Volume.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Volume.TypeInfo),
+
+        new(nameof(Weight), "Measurement", "80 kg",
+            s => Weight.IsValid(s),
+            s => Weight.Format(s),
+            s => Weight.Normalize(s),
+            s => Weight.IsNormalized(s),
+            s => Weight.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Weight.TryParse(s, out var v) ? WeightUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Weight.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Weight.TypeInfo),
+
+        new(nameof(Energy), "Measurement", "100 kWh",
+            s => Energy.IsValid(s),
+            s => Energy.Format(s),
+            s => Energy.Normalize(s),
+            s => Energy.IsNormalized(s),
+            s => Energy.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Energy.TryParse(s, out var v) ? EnergyUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Energy.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Energy.TypeInfo),
+
+        new(nameof(Power), "Measurement", "1500 W",
+            s => Power.IsValid(s),
+            s => Power.Format(s),
+            s => Power.Normalize(s),
+            s => Power.IsNormalized(s),
+            s => Power.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Power.TryParse(s, out var v) ? PowerUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Power.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Power.TypeInfo),
+
+        new(nameof(Voltage), "Measurement", "230 V",
+            s => Voltage.IsValid(s),
+            s => Voltage.Format(s),
+            s => Voltage.Normalize(s),
+            s => Voltage.IsNormalized(s),
+            s => Voltage.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Voltage.TryParse(s, out var v) ? VoltageUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Voltage.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Voltage.TypeInfo),
+
+        new(nameof(ElectricCharge), "Measurement", "5000 mAh",
+            s => ElectricCharge.IsValid(s),
+            s => ElectricCharge.Format(s),
+            s => ElectricCharge.Normalize(s),
+            s => ElectricCharge.IsNormalized(s),
+            s => ElectricCharge.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => ElectricCharge.TryParse(s, out var v) ? ElectricChargeUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => ElectricCharge.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: ElectricCharge.TypeInfo),
+
+        new(nameof(ElectricCurrent), "Measurement", "16 A",
+            s => ElectricCurrent.IsValid(s),
+            s => ElectricCurrent.Format(s),
+            s => ElectricCurrent.Normalize(s),
+            s => ElectricCurrent.IsNormalized(s),
+            s => ElectricCurrent.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => ElectricCurrent.TryParse(s, out var v) ? ElectricCurrentUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => ElectricCurrent.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: ElectricCurrent.TypeInfo),
+
+        new(nameof(FlowRate), "Measurement", "100 L/min",
+            s => FlowRate.IsValid(s),
+            s => FlowRate.Format(s),
+            s => FlowRate.Normalize(s),
+            s => FlowRate.IsNormalized(s),
+            s => FlowRate.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => FlowRate.TryParse(s, out var v) ? FlowRateUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => FlowRate.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: FlowRate.TypeInfo),
+
+        new(nameof(LuminousFlux), "Measurement", "800 lm",
+            s => LuminousFlux.IsValid(s),
+            s => LuminousFlux.Format(s),
+            s => LuminousFlux.Normalize(s),
+            s => LuminousFlux.IsNormalized(s),
+            s => LuminousFlux.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => LuminousFlux.TryParse(s, out var v) ? LuminousFluxUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => LuminousFlux.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: LuminousFlux.TypeInfo),
+
+        new(nameof(Torque), "Measurement", "350 Nm",
+            s => Torque.IsValid(s),
+            s => Torque.Format(s),
+            s => Torque.Normalize(s),
+            s => Torque.IsNormalized(s),
+            s => Torque.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Torque.TryParse(s, out var v) ? TorqueUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            TypeMeta: Torque.TypeInfo),
+
+        new(nameof(Frequency), "Measurement", "3000 rpm",
+            s => Frequency.IsValid(s),
+            s => Frequency.Format(s),
+            s => Frequency.Normalize(s),
+            s => Frequency.IsNormalized(s),
+            s => Frequency.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Frequency.TryParse(s, out var v) ? FrequencyUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Frequency.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Frequency.TypeInfo),
+
+        new(nameof(Speed), "Measurement", "120 km/h",
+            s => Speed.IsValid(s),
+            s => Speed.Format(s),
+            s => Speed.Normalize(s),
+            s => Speed.IsNormalized(s),
+            s => Speed.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Speed.TryParse(s, out var v) ? SpeedUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            TypeMeta: Speed.TypeInfo),
+
+        new(nameof(Temperature), "Measurement", "22 °C",
+            s => Temperature.IsValid(s),
+            s => Temperature.Format(s),
+            s => Temperature.Normalize(s),
+            s => Temperature.IsNormalized(s),
+            s => Temperature.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Temperature.TryParse(s, out var v) ? TemperatureUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            TypeMeta: Temperature.TypeInfo),
+
+        new(nameof(DataSize), "Measurement", "512 GB",
+            s => DataSize.IsValid(s),
+            s => DataSize.Format(s),
+            s => DataSize.Normalize(s),
+            s => DataSize.IsNormalized(s),
+            s => DataSize.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => DataSize.TryParse(s, out var v) ? DataSizeUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => DataSize.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: DataSize.TypeInfo),
+
+        new(nameof(Pressure), "Measurement", "2.5 bar",
+            s => Pressure.IsValid(s),
+            s => Pressure.Format(s),
+            s => Pressure.Normalize(s),
+            s => Pressure.IsNormalized(s),
+            s => Pressure.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Pressure.TryParse(s, out var v) ? PressureUnit.All.Select(u => v!.ToString(u, 4)).ToArray() : null,
+            s => Pressure.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Pressure.TypeInfo),
+
+        new(nameof(Percentage), "Measurement", "85%",
+            s => Percentage.IsValid(s),
+            s => Percentage.Format(s),
+            s => Percentage.Normalize(s),
+            s => Percentage.IsNormalized(s),
+            s => Percentage.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Percentage.TryParse(s, out var v) ? Metadata($"Percent: {v!.Percent}", $"Fraction: {v.Value}") : null,
+            TypeMeta: Percentage.TypeInfo),
+
+        new(nameof(RotationalSpeed), "Measurement", "5200 rpm",
+            s => RotationalSpeed.IsValid(s),
+            s => RotationalSpeed.Format(s),
+            s => RotationalSpeed.Normalize(s),
+            s => RotationalSpeed.IsNormalized(s),
+            _ => null,
+            TypeMeta: RotationalSpeed.TypeInfo),
+
+        new(nameof(SoundLevel), "Measurement", "69 dB(A)",
+            s => SoundLevel.IsValid(s),
+            s => SoundLevel.Format(s),
+            s => SoundLevel.Normalize(s),
+            s => SoundLevel.IsNormalized(s),
+            _ => null,
+            s => SoundLevel.TryParse(s, out var v) ? Metadata($"dB: {v!.Decibels}", $"Weighting: {v.Weighting}") : null,
+            TypeMeta: SoundLevel.TypeInfo),
+    ];
+}
