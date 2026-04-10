@@ -51,7 +51,7 @@ Swedish property designations (fastighetsbeteckning) should use synthetic or wel
 
 ### Country
 
-Country data is based on ISO 3166-1 and other international standards. All country names, codes, calling codes, and classification flags are public reference data and can be used freely.
+Country data is aligned with ISO 3166-1 and other international standards. All country names, codes, calling codes, and classification flags are public reference data and can be used freely.
 
 ## Source hierarchy
 
