@@ -91,7 +91,17 @@ public class PhoneNumberTests
     public void Formatted_NonSwedish_UsesInternationalFormat()
     {
         var phone = PhoneNumber.Parse("+44 20 7946 0958");
-        Assert.Equal(phone.ToInternationalString(), phone.Formatted);
+        Assert.Equal("+44 20 7946 0958", phone.Formatted);
+    }
+
+    [Theory]
+    [InlineData("+442079460958", "+44 20 7946 0958")]
+    [InlineData("004722123456", "+47 22 12 34 56")]
+    [InlineData("+15551234567", "+1 555 123 4567")]
+    public void Formatted_NonSwedish_AddsRelevantWhitespace_WhenInputHasNone(string input, string expected)
+    {
+        var phone = PhoneNumber.Parse(input);
+        Assert.Equal(expected, phone.Formatted);
     }
 
     [Fact]
@@ -213,6 +223,15 @@ public class PhoneNumberTests
         Assert.NotNull(formatted);
     }
 
+    [Theory]
+    [InlineData("+442079460958", "46", "+44 20 7946 0958")]
+    [InlineData("004722123456", "46", "+47 22 12 34 56")]
+    [InlineData("+15551234567", "46", "+1 555 123 4567")]
+    public void Format_WithDefaultCallingCode_AddsRelevantWhitespace_ForDenseInternationalInput(string input, string defaultCode, string expected)
+    {
+        Assert.Equal(expected, PhoneNumber.Format(input, defaultCode));
+    }
+
     [Fact]
     public void Format_WithDefaultCallingCode_InvalidInput_ReturnsNull()
     {
@@ -311,7 +330,7 @@ public class PhoneNumberTests
     {
         var formatted = PhoneNumber.Format("+46701740633", "47");
         Assert.NotNull(formatted);
-        Assert.StartsWith("+46", formatted);
+        Assert.Equal("+46 70 174 06 33", formatted);
     }
 
     [Theory]
@@ -336,7 +355,7 @@ public class PhoneNumberTests
     {
         var phone = PhoneNumber.Parse("0701740633");
         var result = phone.ToLocalString(Country.Norway);
-        Assert.Equal("+46701740633", result);
+        Assert.Equal("+46 70 174 06 33", result);
     }
 
     [Fact]
@@ -353,7 +372,7 @@ public class PhoneNumberTests
     {
         var phone = PhoneNumber.Parse("021-123 45 67", Country.Norway);
         var result = phone.ToLocalString(Country.Sweden);
-        Assert.StartsWith("+47", result);
+        Assert.Equal("+47 21 123 45 67", result);
     }
 
     [Theory]
@@ -398,7 +417,7 @@ public class PhoneNumberTests
     public void Format_WithPhoneCallingCode_NonMatchingCode_ReturnsInternationalFormat()
     {
         var result = PhoneNumber.Format("+46701740633", PhoneCallingCode.Norway);
-        Assert.StartsWith("+46", result);
+        Assert.Equal("+46 70 174 06 33", result);
     }
 
     [Theory]
@@ -423,7 +442,27 @@ public class PhoneNumberTests
     {
         var phone = PhoneNumber.Parse("0701740633");
         var result = phone.ToLocalString(PhoneCallingCode.Norway);
-        Assert.StartsWith("+46", result);
+        Assert.Equal("+46 70 174 06 33", result);
+    }
+
+    [Theory]
+    [InlineData("+44 20 7946 0958", "+44 20 7946 0958")]
+    [InlineData("+47 22 12 34 56", "+47 22 12 34 56")]
+    [InlineData("+1-555-123-4567", "+1 555 123 4567")]
+    public void ToString_NonSwedish_ReturnsSpacedInternationalDisplay(string input, string expected)
+    {
+        var phone = PhoneNumber.Parse(input);
+        Assert.Equal(expected, phone.ToString());
+    }
+
+    [Theory]
+    [InlineData("+442079460958", "+44 20 7946 0958")]
+    [InlineData("004722123456", "+47 22 12 34 56")]
+    [InlineData("+15551234567", "+1 555 123 4567")]
+    public void ToString_NonSwedish_AddsRelevantWhitespace_WhenParsedWithoutIt(string input, string expected)
+    {
+        var phone = PhoneNumber.Parse(input);
+        Assert.Equal(expected, phone.ToString());
     }
 
     [Fact]

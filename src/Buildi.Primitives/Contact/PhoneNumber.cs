@@ -89,9 +89,9 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
     }
 
     /// <summary>
-    /// Human-readable display form. Swedish numbers use local format, others use international.
+    /// Human-readable display form. Swedish numbers use local format, others use spaced international format.
     /// </summary>
-    public string Formatted => IsSwedish ? ToLocalString() : ToInternationalString();
+    public string Formatted => IsSwedish ? ToLocalString() : ToDisplayInternationalString();
 
     private PhoneNumber(string digits, bool isSwedish, bool isMobile)
     {
@@ -256,7 +256,7 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
 
     /// <summary>
     /// Returns the phone number in display format, for example <c>070-174 06 33</c> for Swedish numbers
-    /// or <c>+44701234567</c> for non-Swedish numbers. Uses Swedish country code as default.
+    /// or <c>+44 20 7946 0958</c> for non-Swedish numbers. Uses Swedish country code as default.
     /// Returns <see langword="null"/> when the input is invalid or empty.
     /// When <paramref name="fallbackToTrimmedInputWhenInvalid"/> is <see langword="true"/>, returns the trimmed original input instead of <see langword="null"/> for non-empty invalid input.
     /// </summary>
@@ -275,7 +275,7 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
         if (!TryParse(input, defaultCallingCode, out var r))
             return fallbackToTrimmedInputWhenInvalid && !string.IsNullOrWhiteSpace(input) ? input!.Trim() : null;
 
-        return r!.CountryCallingCode.Value == defaultCallingCode ? r.ToLocalString() : r.ToInternationalString();
+        return r!.CountryCallingCode.Value == defaultCallingCode ? r.ToLocalString() : r.ToDisplayInternationalString();
     }
 
     /// <summary>
@@ -366,16 +366,16 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
     /// <summary>
     /// Returns local format (without country code) when the number belongs to
     /// <paramref name="defaultCallingCode"/>, e.g. <c>070-174 06 33</c> for a Swedish number
-    /// when <paramref name="defaultCallingCode"/> is <c>+46</c>. Otherwise returns international format
+    /// when <paramref name="defaultCallingCode"/> is <c>+46</c>. Otherwise returns spaced international format
     /// with <c>+</c> prefix.
     /// </summary>
     public string ToLocalString(PhoneCallingCode defaultCallingCode)
-        => CountryCallingCode.Value == defaultCallingCode.Value ? ToLocalString() : ToInternationalString();
+        => CountryCallingCode.Value == defaultCallingCode.Value ? ToLocalString() : ToDisplayInternationalString();
 
     /// <summary>
     /// Returns local format (without country code) when the number belongs to
     /// <paramref name="defaultCountry"/>, e.g. <c>070-174 06 33</c> for a Swedish number
-    /// when <paramref name="defaultCountry"/> is Sweden. Otherwise returns international format
+    /// when <paramref name="defaultCountry"/> is Sweden. Otherwise returns spaced international format
     /// with <c>+</c> prefix.
     /// </summary>
     public string ToLocalString(Country defaultCountry)
@@ -393,6 +393,12 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
     /// This is a convenience alias for <see cref="ToE164String"/> — both return the same E.164 representation.
     /// </summary>
     public string ToInternationalString() => ToE164String();
+
+    private string ToDisplayInternationalString()
+    {
+        var subscriberDigits = Digits[(2 + CountryCallingCode.Value.Length)..];
+        return "+" + CountryCallingCode.Value + " " + FormatInternationalSubscriberDigits(CountryCallingCode.Value, subscriberDigits);
+    }
 
     /// <summary>
     /// Returns the phone number in display format, for example <c>+46 70 123 45 67</c>.
@@ -413,6 +419,22 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
         if (!localDigits.StartsWith(prefix)) return false;
         var suffix = localDigits.Substring(prefix.Length);
         return suffix.Length == 2 && int.TryParse(suffix, out var n) && n >= from && n <= to;
+    }
+
+    private static string FormatInternationalSubscriberDigits(string callingCode, string digits)
+    {
+        if (callingCode == "1" && digits.Length == 10)
+            return $"{digits[..3]} {digits.Substring(3, 3)} {digits.Substring(6, 4)}";
+
+        return digits.Length switch
+        {
+            7 => $"{digits[..3]} {digits.Substring(3, 2)} {digits.Substring(5, 2)}",
+            8 => $"{digits[..2]} {digits.Substring(2, 2)} {digits.Substring(4, 2)} {digits.Substring(6, 2)}",
+            9 => $"{digits[..2]} {digits.Substring(2, 3)} {digits.Substring(5, 2)} {digits.Substring(7, 2)}",
+            10 => $"{digits[..2]} {digits.Substring(2, 4)} {digits.Substring(6, 4)}",
+            11 => $"{digits[..3]} {digits.Substring(3, 4)} {digits.Substring(7, 4)}",
+            _ => digits
+        };
     }
 
     private static readonly Regex ScanPattern = new(
