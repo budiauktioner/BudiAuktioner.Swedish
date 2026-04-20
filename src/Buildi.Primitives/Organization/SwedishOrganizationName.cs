@@ -22,7 +22,10 @@ public sealed class SwedishOrganizationName : IEquatable<SwedishOrganizationName
 
     private const int MaxInputLength = 300;
 
-    private static readonly Regex CompanyNamePattern = new(@"^[\p{L}\d\s\-\'\&\.,/:()\+]+$", RegexOptions.Compiled);
+    // The pipe character (|) is intentionally permitted because some upstream registers and
+    // data feeds emit a single combined name that joins the legal name with a trade/brand name
+    // using "|" or "||" (e.g. the Greek "ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE").
+    private static readonly Regex CompanyNamePattern = new(@"^[\p{L}\d\s\-\'\&\.,/:()\+\|]+$", RegexOptions.Compiled);
 
     private static readonly string[] OrgSuffixTokens =
         ["AB", "HB", "KB", "BRF", "HSB", "EF"];

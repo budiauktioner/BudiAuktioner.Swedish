@@ -17,6 +17,8 @@ public class SwedishOrganizationNameTests
     [InlineData("O'Malley's Pub AB", "O'Malley's Pub AB")]
     [InlineData("Müller & Partners", "Müller & Partners")]
     [InlineData("Kebab King / Pizza House", "Kebab King / Pizza House")]
+    [InlineData("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", "ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE")]
+    [InlineData("Legal Name AB | Trade Name", "Legal Name AB | Trade Name")]
     public void TryParse_ValidInput_Succeeds(string input, string expected)
     {
         Assert.True(SwedishOrganizationName.TryParse(input, out var result));
