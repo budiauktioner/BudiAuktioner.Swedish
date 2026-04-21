@@ -23,8 +23,12 @@ internal static class InputSanitization
 {
     /// <summary>
     /// Strips invisible/non-printable characters, normalizes all whitespace variants
-    /// to regular ASCII space (<c>U+0020</c>), and normalizes typographic quotes
-    /// to ASCII apostrophe (<c>U+0027</c>).
+    /// to regular ASCII space (<c>U+0020</c>), normalizes typographic single quotes
+    /// to ASCII apostrophe (<c>U+0027</c>), and normalizes typographic and guillemet
+    /// double quotes to ASCII quotation mark (<c>U+0022</c>). The latter is required
+    /// for Baltic/Slavic registry name conventions where the distinctive name is
+    /// enclosed in double quotes (e.g. <c>SIA "EXAMPLE LV"</c>) and the source system
+    /// may emit any of <c>"</c>, <c>"</c>, <c>„</c>, <c>‟</c>, <c>«</c>, <c>»</c>.
     /// </summary>
     internal static string SanitizeInput(string input)
     {
@@ -34,6 +38,12 @@ internal static class InputSanitization
             if (c is '\u2018' or '\u2019' or '\u201A' or '\u201B')
             {
                 sb.Append('\'');
+                continue;
+            }
+
+            if (c is '\u201C' or '\u201D' or '\u201E' or '\u201F' or '\u00AB' or '\u00BB')
+            {
+                sb.Append('"');
                 continue;
             }
 

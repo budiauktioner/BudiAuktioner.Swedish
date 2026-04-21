@@ -987,6 +987,15 @@
             s => SwedishOrganizationName.TryParse(s, out var v) ? Metadata(v!.HasOrganizationIndicators ? "HasIndicators: Yes" : "HasIndicators: No", $"InferredType: {v.InferredSwedishOrganizationType}") : null,
             TypeMeta: SwedishOrganizationName.TypeInfo),
 
+        new(nameof(EuOrganizationName), "Organization", "SIA \"Example LV\"",
+            s => EuOrganizationName.IsValid(s),
+            s => EuOrganizationName.Format(s),
+            s => EuOrganizationName.Normalize(s),
+            s => EuOrganizationName.IsNormalized(s),
+            s => EuOrganizationName.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => EuOrganizationName.TryParse(s, out var v) ? Metadata($"LegalName: {v!.LegalName}", v.HasTradeName ? $"TradeName: {v.TradeName}" : "TradeName: -") : null,
+            TypeMeta: EuOrganizationName.TypeInfo),
+
         new(nameof(SwedishCfarNumber), "Organization", "55667788",
             s => SwedishCfarNumber.IsValid(s),
             s => SwedishCfarNumber.Format(s),

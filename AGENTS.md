@@ -18,6 +18,7 @@ samples/Buildi.Primitives.Demo/
   Pages/Home.razor          ← Blazor WASM demo app (TypeRegistry, graphs)
   wwwroot/js/               ← JS interop for interactive visualizations
 README.md                   ← usage docs, type tables, code examples
+BREAKING_CHANGES.md         ← `## Breaking changes <prev> - <new>` per upgrade hop, one sub-section per breaking change
 TEST_AND_SAMPLE_DATA.md     ← data strategy, sourcing rules
 docs/articles/
   supported-types.md        ← searchable type reference (name, svenska, namespace)
@@ -423,6 +424,44 @@ When adding a new scannable type, also:
 - Add `FindCandidatesInText` tests in `test/.../TextScanning/FindCandidatesInTextTests.cs`
 - Register the type in `TextScanner.Scan()` and `TextScanResult`
 - Add a typed accessor property on `TextScanResult`
+
+## Breaking changes
+
+Every backwards-incompatible change to the public API **must** be recorded in `BREAKING_CHANGES.md` in the repository root, in the same change set that introduces it.
+
+### Document structure
+
+The file is organized as nested headings, not a table:
+
+- One `## Breaking changes <previous-version> - <new-version>` section per release that contains breaking changes (newest on top). The range makes the upgrade hop explicit (e.g. `## Breaking changes 0.13.0 - 0.14.0` documents what breaks when moving from `0.13.0` to `0.14.0`). No dates — the package version is the only timeline.
+- One `### <short title>` sub-section per breaking change inside that version.
+- Inside each `###` block, use whatever bold-labeled fields fit the change. Existing entries use **Area**, **What changed**, **Why**, **Migration**, and **Examples** — reuse those labels when they apply, add new ones only when needed. Code examples go in fenced ```csharp blocks.
+
+This format (rather than a single table) is intentional: breaking changes often need a paragraph of context, code samples, and multi-step migration instructions that don't fit in a markdown cell.
+
+### What counts as breaking
+
+- Removing or renaming a public type, property, method, enum value, or extension method.
+- Narrowing the contract of a public method (e.g. an input that used to parse now throws / returns `null`, or a regex/charset that used to accept a character no longer does).
+- Changing the canonical normalized output for a previously-valid input.
+- Moving a public type to a different namespace or assembly.
+- Bumping the target framework or any other change that breaks compile-time or binary compatibility.
+
+Pure additions (new types, new optional parameters, new enum values added at the end of an existing group) are **not** breaking and do not belong in this file — they go in regular release notes / commit history.
+
+### How to add an entry
+
+1. Bump `<VersionPrefix>` in `src/Buildi.Primitives/Buildi.Primitives.csproj` to the next minor (or major) version, depending on severity. Per semver-pre-1.0 conventions in this repo, every breaking change bumps the **minor** segment.
+2. If a `## Breaking changes <previous-version> - <new-version>` heading for this hop does not yet exist in `BREAKING_CHANGES.md`, add it at the **top** of the change list (newest first), where `<previous-version>` is the version currently in `<VersionPrefix>` *before* your bump. Otherwise reuse the existing heading.
+3. Add a new `### <short title>` sub-section under that version describing the change. The title should read like a one-line release note (e.g. *`SwedishOrganizationName` narrowed back to strict Bolagsverket charset*).
+4. Fill in the relevant labeled fields: at minimum **Area** + **What changed** + **Migration**. Add **Why** when the rationale isn't obvious from the change itself.
+5. The entry must be in the same commit as the code change that caused it.
+
+### When *not* to add an entry
+
+- The change is in `src/Buildi.Primitives/SampleData/`, `samples/`, `test/`, or `docs/articles/` only.
+- The change is to internal types, `private` members, or anything not exposed from the published NuGet assembly.
+- The change is purely additive (new public surface).
 
 ## Building and testing
 

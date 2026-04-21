@@ -17,8 +17,6 @@ public class SwedishOrganizationNameTests
     [InlineData("O'Malley's Pub AB", "O'Malley's Pub AB")]
     [InlineData("Müller & Partners", "Müller & Partners")]
     [InlineData("Kebab King / Pizza House", "Kebab King / Pizza House")]
-    [InlineData("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", "ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE")]
-    [InlineData("Legal Name AB | Trade Name", "Legal Name AB | Trade Name")]
     public void TryParse_ValidInput_Succeeds(string input, string expected)
     {
         Assert.True(SwedishOrganizationName.TryParse(input, out var result));
@@ -30,6 +28,12 @@ public class SwedishOrganizationNameTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("A")]
+    // Strict Swedish scope: pipe-separated combined names and Baltic/Slavic double-quoted
+    // distinctive names are deliberately rejected. Use EuOrganizationName for those.
+    [InlineData("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE")]
+    [InlineData("Legal Name AB | Trade Name")]
+    [InlineData("SIA \"EXAMPLE LV\"")]
+    [InlineData("UAB \"EXAMPLE LT\"")]
     public void TryParse_InvalidInput_Fails(string? input)
     {
         Assert.False(SwedishOrganizationName.TryParse(input, out var result));
@@ -269,100 +273,5 @@ public class SwedishOrganizationNameTests
     {
         var a = SwedishOrganizationName.Parse("Budi Auktioner AB");
         Assert.Equal(1, a.CompareTo(null));
-    }
-
-    // --- LegalName / TradeName splitting (LEGAL || TRADE convention) ---
-
-    [Theory]
-    [InlineData("Volvo AB", "Volvo AB", null)]
-    [InlineData("Budi Auktioner AB", "Budi Auktioner AB", null)]
-    [InlineData("Volvo AB||Volvo Cars", "Volvo AB", "Volvo Cars")]
-    [InlineData("Volvo AB | Volvo Cars", "Volvo AB", "Volvo Cars")]
-    [InlineData("Volvo AB | | Volvo Cars", "Volvo AB", "Volvo Cars")]
-    [InlineData("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", "ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ", "EXAMPLE TEXTILE")]
-    [InlineData("Acme Group AB||Acme Retail||Acme Wholesale", "Acme Group AB", "Acme Retail | Acme Wholesale")]
-    public void TryParse_SplitsLegalAndTrade(string input, string expectedLegal, string? expectedTrade)
-    {
-        Assert.True(SwedishOrganizationName.TryParse(input, out var name));
-        Assert.Equal(expectedLegal, name!.LegalName);
-        Assert.Equal(expectedTrade, name.TradeName);
-        Assert.Equal(expectedTrade is not null, name.HasTradeName);
-    }
-
-    [Theory]
-    [InlineData("||EXAMPLE TEXTILE")]
-    [InlineData("Volvo AB||")]
-    [InlineData("|||")]
-    public void TryParse_OnlyOneSideHasContent_DoesNotSplit(string input)
-    {
-        Assert.True(SwedishOrganizationName.TryParse(input, out var name));
-        Assert.Equal(name!.Value, name.LegalName);
-        Assert.Null(name.TradeName);
-        Assert.False(name.HasTradeName);
-    }
-
-    [Fact]
-    public void TryParse_PipeSeparated_RunsInferenceOnLegalPortion()
-    {
-        Assert.True(SwedishOrganizationName.TryParse("Volvo AB||Volvo Cars", out var name));
-        Assert.Equal(SwedishOrganizationType.Aktiebolag, name!.InferredSwedishOrganizationType);
-        Assert.True(name.HasOrganizationIndicators);
-    }
-
-    [Fact]
-    public void TryParse_PipeSeparated_TradeNameAlone_DoesNotInferType()
-    {
-        // "Generic Brand" (legal) has no Swedish indicator; the trade portion "Volvo AB" must NOT
-        // leak into the inference, otherwise we would falsely classify this as Aktiebolag.
-        Assert.True(SwedishOrganizationName.TryParse("Generic Brand||Volvo AB", out var name));
-        Assert.Equal(SwedishOrganizationType.Unknown, name!.InferredSwedishOrganizationType);
-        Assert.False(name.HasOrganizationIndicators);
-    }
-
-    [Fact]
-    public void InferSwedishOrganizationType_Static_UsesLegalPortion()
-    {
-        Assert.Equal(SwedishOrganizationType.Aktiebolag,
-            SwedishOrganizationName.InferSwedishOrganizationType("Volvo AB||Volvo Cars"));
-        Assert.Equal(SwedishOrganizationType.Unknown,
-            SwedishOrganizationName.InferSwedishOrganizationType("Generic Brand||Volvo AB"));
-    }
-
-    [Theory]
-    [InlineData(null, false)]
-    [InlineData("", false)]
-    [InlineData("   ", false)]
-    [InlineData("Volvo AB", true)]
-    [InlineData("Volvo AB||Volvo Cars", true)]
-    public void TrySplitLegalAndTrade_ReturnsExpected(string? input, bool expectedSuccess)
-    {
-        var ok = SwedishOrganizationName.TrySplitLegalAndTrade(input, out _, out _);
-        Assert.Equal(expectedSuccess, ok);
-    }
-
-    [Fact]
-    public void TrySplitLegalAndTrade_ExtractsParts()
-    {
-        Assert.True(SwedishOrganizationName.TrySplitLegalAndTrade(
-            "ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", out var legal, out var trade));
-        Assert.Equal("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ", legal);
-        Assert.Equal("EXAMPLE TEXTILE", trade);
-    }
-
-    [Fact]
-    public void TrySplitLegalAndTrade_NoSeparator_ReturnsFullNameAsLegal()
-    {
-        Assert.True(SwedishOrganizationName.TrySplitLegalAndTrade("Volvo AB", out var legal, out var trade));
-        Assert.Equal("Volvo AB", legal);
-        Assert.Null(trade);
-    }
-
-    [Theory]
-    [InlineData("VOLVO AB||EXAMPLE TEXTILE", "Volvo AB||Example Textile")]
-    [InlineData("VOLVO AB || EXAMPLE TEXTILE", "Volvo AB || Example Textile")]
-    [InlineData("volvo ab||example textile", "Volvo AB||Example Textile")]
-    public void NormalizeCasing_TreatsPipeAsWordBoundary(string input, string expected)
-    {
-        Assert.Equal(expected, SwedishOrganizationName.NormalizeCasing(input));
     }
 }

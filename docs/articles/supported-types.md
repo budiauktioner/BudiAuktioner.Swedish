@@ -10,7 +10,8 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | --- | --- | --- | --- |
 | Swedish Organization Number | Organisationsnummer | Swedish organization number (10/12-digit) with Luhn check digit | `Buildi.Primitives.Organization.SwedishOrganizationNumber` |
 | VAT Number | Momsnummer | EU VAT numbers with country-specific validation | `Buildi.Primitives.Organization.EuVatNumber` |
-| Swedish Organization Name | Organisationsnamn | Organization/company name (2–200 chars, whitespace-normalized) | `Buildi.Primitives.Organization.SwedishOrganizationName` |
+| Swedish Organization Name | Organisationsnamn | Strict Swedish organization/company name (2–200 chars, whitespace-normalized; Bolagsverket-style charset) | `Buildi.Primitives.Organization.SwedishOrganizationName` |
+| EU Organization Name | Europeiskt organisationsnamn | Multi-jurisdictional name for VIES/EORI/GEMI feeds; permits `LEGAL\|\|TRADE` split and Baltic/Slavic `SIA "Name"` quoting | `Buildi.Primitives.Organization.EuOrganizationName` |
 | Swedish SNI Code | SNI-kod | Swedish industrial classification code (SNI 2025) | `Buildi.Primitives.Organization.SwedishSniCode` |
 | Swedish CFAR Number | CFAR-nummer | Swedish 8-digit establishment/workplace identifier | `Buildi.Primitives.Organization.SwedishCfarNumber` |
 | DUNS Number | DUNS-nummer | D-U-N-S number (9 digits) | `Buildi.Primitives.Organization.DunsNumber` |

@@ -35,4 +35,42 @@ public static class SwedishOrganizationIdentifierMaskingExtensions
         return string.Join(" ", parts.Select(p =>
             p.Length <= 1 ? new string(MaskChar, 1) : $"{p[0]}{new string(MaskChar, p.Length - 1)}"));
     }
+
+    /// <summary>
+    /// Returns a masked EU organization name showing only the first character of each word,
+    /// with the structural separators (space, <c>|</c>, <c>"</c>) preserved verbatim.
+    /// Examples:
+    /// <list type="bullet">
+    /// <item><description><c>SIA "Example LV"</c> → <c>S** "E****** L*"</c></description></item>
+    /// <item><description><c>Volvo AB||Volvo Cars</c> → <c>V**** A*||V**** C***</c></description></item>
+    /// </list>
+    /// </summary>
+    public static string ToMaskedString(this EuOrganizationName orgName)
+    {
+        var sb = new System.Text.StringBuilder(orgName.Value.Length);
+        var word = new System.Text.StringBuilder();
+        foreach (var c in orgName.Value)
+        {
+            if (c == ' ' || c == '|' || c == '"')
+            {
+                AppendMaskedWord(sb, word);
+                sb.Append(c);
+            }
+            else
+            {
+                word.Append(c);
+            }
+        }
+        AppendMaskedWord(sb, word);
+        return sb.ToString();
+    }
+
+    private static void AppendMaskedWord(System.Text.StringBuilder sb, System.Text.StringBuilder word)
+    {
+        if (word.Length == 0) return;
+        sb.Append(word[0]);
+        if (word.Length > 1)
+            sb.Append(MaskChar, word.Length - 1);
+        word.Clear();
+    }
 }

@@ -279,7 +279,8 @@ All types share a consistent API:
 | ----------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | [`SwedishOrganizationNumber`](#organization-numbers)              | Organisationsnummer | Swedish organization number with 10-digit statutory form and 12-digit normalized form, including sole-trader person-based forms |
 | [`EuVatNumber`](#vat-numbers)                                       | Momsnummer          | EU VAT numbers with country-specific validation                                                                                 |
-| [`SwedishOrganizationName`](#organization-name)                   | Organisationsnamn   | Organization/company name (whitespace-normalized, 2–200 chars)                                                                  |
+| [`SwedishOrganizationName`](#organization-name)                   | Organisationsnamn   | Strict Swedish organization/company name (whitespace-normalized, 2–200 chars; Bolagsverket-style charset)                       |
+| [`EuOrganizationName`](#organization-name-eu)         | Europeiskt organisationsnamn | Multi-jurisdictional name for VIES/EORI/GEMI feeds; permits `LEGAL\|\|TRADE` split and Baltic/Slavic `SIA "Name"` quoting       |
 | [`SwedishSniCode`](#sni-code)                                     | SNI-kod             | Swedish industrial classification code (SNI 2025, effective December 2024)                                                      |
 | [`SwedishCfarNumber`](#cfar-number)                               | CFAR-nummer         | Swedish 8-digit establishment/workplace identifier                                                                              |
 | [`DunsNumber`](#swedish-organization-identifier-parser)                   | DUNS-nummer         | D-U-N-S number (9 digits)                                                                                                       |
@@ -714,7 +715,7 @@ The registered trade name (*organisationsnamn* / *företagsnamn*) of a legal ent
 
 No checksum or structural validation is applied - any non-empty string of 2–200 characters (after trimming) is accepted. Leading, trailing, and consecutive internal whitespace is normalized to a single space. Casing is preserved as entered.
 
-The allowed character set is intentionally broad to cover international names: Unicode letters (`\p{L}`), digits, whitespace, and the punctuation `- ' & . , / : ( ) +`. The pipe character `|` is also permitted because some upstream registries and data feeds emit a single combined string that joins the legal name with a trade/brand name using `|` or `||` as a separator (see *Combined legal/trade names* below).
+The allowed character set is intentionally broad enough to cover international Swedish-context names — Unicode letters (`\p{L}`), digits, whitespace, and the punctuation `- ' & . , / : ( ) +` — but deliberately stays within what Bolagsverket actually permits. Pipe-separated combined names (`LEGAL||TRADE`) and Baltic/Slavic double-quoted distinctive names (`SIA "Example LV"`) are **not** accepted by this type — for those use [`EuOrganizationName`](#organization-name-eu) instead.
 
 Tests: [SwedishOrganizationNameTests.cs](test/Buildi.Primitives.Tests/Organization/SwedishOrganizationNameTests.cs)
 
@@ -729,8 +730,39 @@ if (SwedishOrganizationName.TryParse("  Budi   AB  ", out var name))
 SwedishOrganizationName.IsValid("Budi AB");              // true
 SwedishOrganizationName.IsValid("Al-Salam Handel AB");   // true
 SwedishOrganizationName.IsValid("Café Björnen");         // true
+SwedishOrganizationName.IsValid("SIA \"Example LV\"");   // false — use EuOrganizationName
 SwedishOrganizationName.Format("  Budi  AB  ");          // "Budi AB"
 SwedishOrganizationName.Normalize("  Budi  AB  ");       // "Budi AB"
+```
+
+#### Organization name (EU) <a id="organization-name-eu"></a>
+
+The registered name of a legal entity from any European jurisdiction. Use this type when ingesting company names from cross-border sources such as **VIES** (EU VAT validation), **EORI** customs lookups, **GEMI** exports, or commercial business-data brokers — situations where the strict Swedish naming rules of `SwedishOrganizationName` do not apply.
+
+The allowed character set is the strict Swedish set plus two extra characters required by real-world registry data:
+
+- The pipe character `|` — used by some upstream registries to flatten a legal name and a trade/brand name into a single string with `|` or `||` as separator. See *Combined legal/trade names* below.
+- The ASCII double quote `"` — required by Baltic and Slavic registries (Latvia, Lithuania, Estonia, Poland, Russia, Ukraine, Bulgaria) where the **distinctive name is enclosed in double quotes** by law, with the legal form outside (e.g. `SIA "Example LV"`). See *Quoted distinctive names* below.
+
+This type performs validation and split-name extraction only; it does not infer a jurisdiction-specific organization type. For Swedish-specific inference (Aktiebolag, Handelsbolag, Bostadsrättsförening, government agencies, …) use `SwedishOrganizationName`.
+
+Tests: [EuOrganizationNameTests.cs](test/Buildi.Primitives.Tests/Organization/EuOrganizationNameTests.cs)
+
+- [VIES — EU VAT validation](https://ec.europa.eu/taxation_customs/vies/)
+- [European Business Registry Association](https://www.businessregisters.eu/)
+
+```csharp
+if (EuOrganizationName.TryParse("SIA \"Example LV\"", out var name))
+{
+    Console.WriteLine(name.Value);     // SIA "Example LV"
+    Console.WriteLine(name.LegalName); // SIA "Example LV"  (no pipe split)
+}
+
+EuOrganizationName.IsValid("Budi AB");                                // true (superset of Swedish)
+EuOrganizationName.IsValid("SIA \"Example LV\"");                     // true
+EuOrganizationName.IsValid("UAB \"Example LT\"");                     // true
+EuOrganizationName.IsValid("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE");  // true
+EuOrganizationName.Format("  SIA   \"Example LV\"  ");                // SIA "Example LV"
 ```
 
 ##### Combined legal/trade names (`LEGAL || TRADE`)
@@ -746,21 +778,21 @@ The legal/registered name and the trade/brand name (DBA) are conceptually distin
 Because no public company registry permits `|` in a registered name, a run of one or more `|` characters is unambiguously a transport separator. `TryParse` recognizes this pattern and exposes the parts via `LegalName` / `TradeName` / `HasTradeName`. `Value` always preserves the full original string so the data round-trips without loss.
 
 ```csharp
-if (SwedishOrganizationName.TryParse("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", out var name))
+if (EuOrganizationName.TryParse("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", out var name))
 {
-    Console.WriteLine(name.Value);       // ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE  (round-trip)
-    Console.WriteLine(name.LegalName);   // ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ
-    Console.WriteLine(name.TradeName);   // EXAMPLE TEXTILE
+    Console.WriteLine(name.Value);        // ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE  (round-trip)
+    Console.WriteLine(name.LegalName);    // ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ
+    Console.WriteLine(name.TradeName);    // EXAMPLE TEXTILE
     Console.WriteLine(name.HasTradeName); // True
 }
 
 // Names without a separator: LegalName == Value, TradeName == null.
-var simple = SwedishOrganizationName.Parse("Volvo AB");
+var simple = EuOrganizationName.Parse("Volvo AB");
 Console.WriteLine(simple.LegalName);   // Volvo AB
 Console.WriteLine(simple.TradeName);   // (null)
 
 // Static helper for callers that just want the split without constructing the type.
-SwedishOrganizationName.TrySplitLegalAndTrade(
+EuOrganizationName.TrySplitLegalAndTrade(
     "Volvo AB | Volvo Cars", out var legal, out var trade);
 // legal = "Volvo AB", trade = "Volvo Cars"
 ```
@@ -770,8 +802,31 @@ Splitting rules:
 - The separator is any run of one or more `|` characters (`|`, `||`, `|||`, …) with optional surrounding whitespace.
 - Multi-segment forms like `A||B||C` yield `LegalName = "A"`, `TradeName = "B | C"` (remaining segments joined with a single canonical ` | `).
 - If only one side has content (e.g. `||TRADE` or `LEGAL||`), no split is performed: `LegalName = Value`, `TradeName = null`.
-- Type inference (`InferredSwedishOrganizationType`, `HasOrganizationIndicators`) always runs against `LegalName` only, so an English brand in the trade portion (`Generic Brand||Volvo AB`) cannot falsely classify the entity as an Aktiebolag.
 - Other punctuation that *is* legitimate inside real company names (`/`, `,`, `-`, `&`, `+`, …) is **not** treated as a separator — splitting on those would wrongly chop names like `Smith, Jones & Co.` or `Kebab King / Pizza House`.
+
+##### Quoted distinctive names (`SIA "EXAMPLE LV"`)
+
+In **Latvia, Lithuania, Estonia, Poland, Russia, Ukraine, and Bulgaria** the distinctive name (the brand-equivalent portion) is by law enclosed in double quotes, with the legal form sitting outside the quotes:
+
+| Country | Legal form | Real-shaped example |
+|---|---|---|
+| Latvia | SIA, AS | `SIA "Example LV"`, `AS "Example LV"` |
+| Lithuania | UAB, AB | `UAB "Example LT"`, `AB "Example LT"` |
+| Estonia | OÜ, AS | `OÜ "Example EE"`, `AS "Example EE"` |
+| Poland | Sp. z o.o., S.A. | `"Example PL" Sp. z o.o.` |
+| Russia | ОАО, ООО | `ОАО "Газпром"` |
+| Ukraine | ТОВ, ПАТ | `ТОВ "Київстар"` |
+| Bulgaria | АД, ООД | `"Лукойл" АД` |
+
+The same systems sometimes emit **typographic double-quote variants** instead of plain ASCII `"` — Word and mobile keyboards produce `“…”` (U+201C / U+201D), German systems may use `„…‟` (U+201E / U+201F), and Russian / Ukrainian / French registries use guillemets `«…»` (U+00AB / U+00BB). All of these are normalized to ASCII `"` by `InputSanitization` before validation, so any of the following inputs round-trip to the same canonical `Value`:
+
+```csharp
+EuOrganizationName.Parse("SIA \"Example LV\"").Value;       // SIA "Example LV"
+EuOrganizationName.Parse("SIA \u201CExample LV\u201D").Value; // SIA "Example LV"  (curly quotes)
+EuOrganizationName.Parse("\u00ABExample\u00BB AS").Value;     // "Example" AS      (guillemets)
+```
+
+Diacritics in the local script are preserved (covered by `\p{L}`), e.g. `SIA "Vāca Pārtika"`, `OÜ "Tallinna Kaubamaja"`.
 
 #### SNI code
 
@@ -4041,6 +4096,7 @@ The following table lists every type that provides a `ToMaskedString()` extensio
 | `LeiCode` | `5493****************` (LOU prefix visible) | - |
 | `DunsNumber` | `*********` | - |
 | `SwedishOrganizationName` | `V**** C*** AB` (first letter per word) | - |
+| `EuOrganizationName` | `S** "E****** L*"` (first letter per word; `"`, `\|` preserved) | - |
 
 **Banking** (`Buildi.Primitives.Banking`) - `BankingMaskingExtensions`
 
@@ -4160,6 +4216,10 @@ EuVatNumber.Parse("DE123456789").ToMaskedString(alwaysMask: true); // "DE1234***
 
 // Organization name - first letter of each word visible
 SwedishOrganizationName.Parse("Volvo Cars AB").ToMaskedString();   // "V**** C*** AB"
+
+// European organization name - same shape, but " and | are preserved as structural separators
+EuOrganizationName.Parse("SIA \"Example LV\"").ToMaskedString();  // "S** \"E****** L*\""
+EuOrganizationName.Parse("Volvo AB||Volvo Cars").ToMaskedString(); // "V**** A*||V**** C***"
 ```
 
 ### Banking masking

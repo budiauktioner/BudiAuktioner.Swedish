@@ -22,10 +22,11 @@ public sealed class SwedishOrganizationName : IEquatable<SwedishOrganizationName
 
     private const int MaxInputLength = 300;
 
-    // The pipe character (|) is intentionally permitted because some upstream registers and
-    // data feeds emit a single combined name that joins the legal name with a trade/brand name
-    // using "|" or "||" (e.g. the Greek "ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE").
-    private static readonly Regex CompanyNamePattern = new(@"^[\p{L}\d\s\-\'\&\.,/:()\+\|]+$", RegexOptions.Compiled);
+    // Scope: strict Swedish company-name characters per Bolagsverket conventions (Unicode
+    // letters, digits, whitespace, and the punctuation - ' & . , / : ( ) +). For broader
+    // multi-jurisdictional names that may contain pipes (LEGAL||TRADE) or double-quoted
+    // distinctive parts (SIA "Example LV"), use EuOrganizationName instead.
+    private static readonly Regex CompanyNamePattern = new(@"^[\p{L}\d\s\-\'\&\.,/:()\+]+$", RegexOptions.Compiled);
 
     private static readonly string[] OrgSuffixTokens =
         ["AB", "HB", "KB", "BRF", "HSB", "EF"];
@@ -151,39 +152,16 @@ public sealed class SwedishOrganizationName : IEquatable<SwedishOrganizationName
     /// <summary>
     /// The best-guess <see cref="SwedishOrganizationType"/> inferred from the name alone, without an
     /// organization number. Returns <see cref="SwedishOrganizationType.Unknown"/> when no indicators
-    /// are detected. Inference always runs against <see cref="LegalName"/>, never the trade name.
+    /// are detected.
     /// </summary>
     public SwedishOrganizationType InferredSwedishOrganizationType { get; }
 
-    /// <summary>
-    /// The legal/registered portion of the name. When the input contains a pipe-separated combined
-    /// form like <c>LEGAL||TRADE</c> or <c>LEGAL | TRADE</c> (a convention used by some upstream
-    /// registries and data feeds, e.g. the Greek GEMI), this returns the part before the first
-    /// pipe run. Otherwise this equals <see cref="Value"/>.
-    /// </summary>
-    public string LegalName { get; }
-
-    /// <summary>
-    /// The trade/brand name portion when the input is a pipe-separated combined form like
-    /// <c>LEGAL||TRADE</c>; <see langword="null"/> otherwise. Multiple trade-name segments
-    /// (<c>LEGAL||TRADE1||TRADE2</c>) are joined with <c> | </c>.
-    /// </summary>
-    public string? TradeName { get; }
-
-    /// <summary>
-    /// <see langword="true"/> when the input was a pipe-separated combined form and a non-empty
-    /// trade name was extracted. Equivalent to <c>TradeName is not null</c>.
-    /// </summary>
-    public bool HasTradeName => TradeName is not null;
-
-    private SwedishOrganizationName(string value, string casingNormalized, bool hasIndicators, SwedishOrganizationType inferredType, string legalName, string? tradeName)
+    private SwedishOrganizationName(string value, string casingNormalized, bool hasIndicators, SwedishOrganizationType inferredType)
     {
         Value = value;
         CasingNormalizedValue = casingNormalized;
         HasOrganizationIndicators = hasIndicators;
         InferredSwedishOrganizationType = inferredType;
-        LegalName = legalName;
-        TradeName = tradeName;
     }
 
     public static bool TryParse(string? input, out SwedishOrganizationName? result)
@@ -193,13 +171,12 @@ public sealed class SwedishOrganizationName : IEquatable<SwedishOrganizationName
         if (normalized.Length > MaxInputLength) return false;
         if (!Validate(normalized)) return false;
 
-        var (legalName, tradeName) = SplitLegalAndTrade(normalized);
-        var forInference = StripPublSuffix(legalName);
+        var forInference = StripPublSuffix(normalized);
         var hasIndicators = DetectOrganizationIndicators(forInference);
         var inferredType = InferSwedishOrganizationTypeFromName(forInference);
         var casingNormalized = NormalizeCasing(normalized);
 
-        result = new SwedishOrganizationName(normalized, casingNormalized, hasIndicators, inferredType, legalName, tradeName);
+        result = new SwedishOrganizationName(normalized, casingNormalized, hasIndicators, inferredType);
         return true;
     }
 
@@ -221,17 +198,14 @@ public sealed class SwedishOrganizationName : IEquatable<SwedishOrganizationName
     public static SwedishOrganizationType InferSwedishOrganizationType(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return SwedishOrganizationType.Unknown;
-        var (legal, _) = SplitLegalAndTrade(InputSanitization.CollapseWhitespace(name));
-        return InferSwedishOrganizationTypeFromName(StripPublSuffix(legal));
+        return InferSwedishOrganizationTypeFromName(StripPublSuffix(InputSanitization.CollapseWhitespace(name)));
     }
 
     /// <summary>
     /// Normalizes the casing of an organization name. When all letters share the same case
     /// (all upper or all lower), auto-capitalizes each word while preserving known Swedish
     /// corporate abbreviations (<c>AB</c>, <c>HB</c>, <c>KB</c>, <c>BRF</c>, <c>HSB</c>,
-    /// <c>EF</c>) in uppercase. Mixed-case input is preserved as-is. Pipe characters
-    /// (<c>|</c>) are treated as word boundaries so combined names like
-    /// <c>VOLVO AB||EXAMPLE TEXTILE</c> normalize per segment.
+    /// <c>EF</c>) in uppercase. Mixed-case input is preserved as-is.
     /// </summary>
     public static string NormalizeCasing(string name)
     {
@@ -241,77 +215,15 @@ public sealed class SwedishOrganizationName : IEquatable<SwedishOrganizationName
         var allSameCase = letters.All(char.IsLower) || letters.All(char.IsUpper);
         if (!allSameCase) return name;
 
-        var sb = new System.Text.StringBuilder(name.Length);
-        var word = new System.Text.StringBuilder();
-        foreach (var c in name)
+        var words = name.Split(' ');
+        for (var i = 0; i < words.Length; i++)
         {
-            if (c == ' ' || c == '|')
-            {
-                if (word.Length > 0)
-                {
-                    AppendNormalizedWord(sb, word.ToString());
-                    word.Clear();
-                }
-                sb.Append(c);
-            }
+            if (KnownAbbreviations.Contains(words[i]))
+                words[i] = words[i].ToUpperInvariant();
             else
-            {
-                word.Append(c);
-            }
+                words[i] = CapitalizeWord(words[i]);
         }
-        if (word.Length > 0)
-            AppendNormalizedWord(sb, word.ToString());
-        return sb.ToString();
-    }
-
-    private static void AppendNormalizedWord(System.Text.StringBuilder sb, string word)
-    {
-        if (KnownAbbreviations.Contains(word))
-            sb.Append(word.ToUpperInvariant());
-        else
-            sb.Append(CapitalizeWord(word));
-    }
-
-    /// <summary>
-    /// Splits a combined <c>LEGAL||TRADE</c> or <c>LEGAL | TRADE</c> name into its parts.
-    /// Some upstream registries and data feeds (notably Greek GEMI exports, certain VIES
-    /// responses, and commercial business data brokers) flatten the registered legal name and
-    /// the trade/brand name into a single string using a pipe-character separator. This helper
-    /// recognizes any run of one or more <c>|</c> characters (with optional surrounding
-    /// whitespace) as a separator. Multi-segment forms like <c>A||B||C</c> yield
-    /// <c>tradeName = "B | C"</c>. When no usable separator is found, <paramref name="legalName"/>
-    /// equals the trimmed input and <paramref name="tradeName"/> is <see langword="null"/>.
-    /// Returns <see langword="false"/> only for null/empty input.
-    /// </summary>
-    public static bool TrySplitLegalAndTrade(string? input, out string legalName, out string? tradeName)
-    {
-        legalName = string.Empty;
-        tradeName = null;
-        if (string.IsNullOrWhiteSpace(input)) return false;
-
-        var (legal, trade) = SplitLegalAndTrade(InputSanitization.CollapseWhitespace(input));
-        legalName = legal;
-        tradeName = trade;
-        return true;
-    }
-
-    private static readonly Regex PipeSeparatorRegex = new(@"\s*\|+\s*", RegexOptions.Compiled);
-
-    private static (string Legal, string? Trade) SplitLegalAndTrade(string collapsed)
-    {
-        if (collapsed.IndexOf('|') < 0) return (collapsed, null);
-
-        var parts = PipeSeparatorRegex.Split(collapsed);
-        var nonEmpty = new List<string>(parts.Length);
-        foreach (var p in parts)
-        {
-            if (!string.IsNullOrEmpty(p)) nonEmpty.Add(p);
-        }
-        if (nonEmpty.Count < 2) return (collapsed, null);
-
-        var legal = nonEmpty[0];
-        var trade = string.Join(" | ", nonEmpty.Skip(1));
-        return (legal, trade);
+        return string.Join(" ", words);
     }
 
     /// <summary>
