@@ -714,6 +714,8 @@ The registered trade name (*organisationsnamn* / *företagsnamn*) of a legal ent
 
 No checksum or structural validation is applied - any non-empty string of 2–200 characters (after trimming) is accepted. Leading, trailing, and consecutive internal whitespace is normalized to a single space. Casing is preserved as entered.
 
+The allowed character set is intentionally broad to cover international names: Unicode letters (`\p{L}`), digits, whitespace, and the punctuation `- ' & . , / : ( ) +`. The pipe character `|` is also permitted because some upstream registries and data feeds emit a single combined string that joins the legal name with a trade/brand name using `|` or `||` as a separator (see *Combined legal/trade names* below).
+
 Tests: [SwedishOrganizationNameTests.cs](test/Buildi.Primitives.Tests/Organization/SwedishOrganizationNameTests.cs)
 
 - [Bolagsverket](https://bolagsverket.se) - Swedish Companies Registration Office
@@ -730,6 +732,46 @@ SwedishOrganizationName.IsValid("Café Björnen");         // true
 SwedishOrganizationName.Format("  Budi  AB  ");          // "Budi AB"
 SwedishOrganizationName.Normalize("  Budi  AB  ");       // "Budi AB"
 ```
+
+##### Combined legal/trade names (`LEGAL || TRADE`)
+
+The legal/registered name and the trade/brand name (DBA) are conceptually distinct in essentially every jurisdiction (Swedish *firma*/*bifirma*, Greek *επωνυμία*/*διακριτικός τίτλος*, US *legal name*/*DBA*, UK *trading as*, German *Firma*/*Geschäftsbezeichnung*, etc.). Some upstream sources flatten the two into one string using a pipe separator instead of two columns:
+
+- Greek **GEMI** business-registry exports
+- Some **VIES** (EU VAT validation) responses
+- **EORI** customs lookups
+- Commercial business-data brokers (Dun & Bradstreet, etc.)
+- Legacy ERP/EDI feeds
+
+Because no public company registry permits `|` in a registered name, a run of one or more `|` characters is unambiguously a transport separator. `TryParse` recognizes this pattern and exposes the parts via `LegalName` / `TradeName` / `HasTradeName`. `Value` always preserves the full original string so the data round-trips without loss.
+
+```csharp
+if (SwedishOrganizationName.TryParse("ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE", out var name))
+{
+    Console.WriteLine(name.Value);       // ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ||EXAMPLE TEXTILE  (round-trip)
+    Console.WriteLine(name.LegalName);   // ΑΦΟΙ ΠΑΠΑΔΟΠΟΥΛΟΥ ΟΕ
+    Console.WriteLine(name.TradeName);   // EXAMPLE TEXTILE
+    Console.WriteLine(name.HasTradeName); // True
+}
+
+// Names without a separator: LegalName == Value, TradeName == null.
+var simple = SwedishOrganizationName.Parse("Volvo AB");
+Console.WriteLine(simple.LegalName);   // Volvo AB
+Console.WriteLine(simple.TradeName);   // (null)
+
+// Static helper for callers that just want the split without constructing the type.
+SwedishOrganizationName.TrySplitLegalAndTrade(
+    "Volvo AB | Volvo Cars", out var legal, out var trade);
+// legal = "Volvo AB", trade = "Volvo Cars"
+```
+
+Splitting rules:
+
+- The separator is any run of one or more `|` characters (`|`, `||`, `|||`, …) with optional surrounding whitespace.
+- Multi-segment forms like `A||B||C` yield `LegalName = "A"`, `TradeName = "B | C"` (remaining segments joined with a single canonical ` | `).
+- If only one side has content (e.g. `||TRADE` or `LEGAL||`), no split is performed: `LegalName = Value`, `TradeName = null`.
+- Type inference (`InferredSwedishOrganizationType`, `HasOrganizationIndicators`) always runs against `LegalName` only, so an English brand in the trade portion (`Generic Brand||Volvo AB`) cannot falsely classify the entity as an Aktiebolag.
+- Other punctuation that *is* legitimate inside real company names (`/`, `,`, `-`, `&`, `+`, …) is **not** treated as a separator — splitting on those would wrongly chop names like `Smith, Jones & Co.` or `Kebab King / Pizza House`.
 
 #### SNI code
 
