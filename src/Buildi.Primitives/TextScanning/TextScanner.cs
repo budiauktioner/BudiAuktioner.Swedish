@@ -72,6 +72,7 @@ public sealed class TextScanner
         var gtin14s = ScanType(text, options, TextCandidateCategory.Product, Gtin14.FindCandidatesInText);
         var ipRatings = ScanType(text, options, TextCandidateCategory.Product, IpRating.FindCandidatesInText);
         var electricalPhases = ScanType(text, options, TextCandidateCategory.Product, ElectricalPhase.FindCandidatesInText);
+        var refrigerants = ScanType(text, options, TextCandidateCategory.Product, Refrigerant.FindCandidatesInText);
 
         var countries = ScanType(text, options, TextCandidateCategory.Geography, Country.FindCandidatesInText);
         var municipalities = ScanType(text, options, TextCandidateCategory.Geography, SwedishMunicipality.FindCandidatesInText);
@@ -100,6 +101,7 @@ public sealed class TextScanner
         var rotationalSpeeds = ScanType(text, options, TextCandidateCategory.Measurement, RotationalSpeed.FindCandidatesInText);
         var soundLevels = ScanType(text, options, TextCandidateCategory.Measurement, SoundLevel.FindCandidatesInText);
         var euroEmissionClasses = ScanType(text, options, TextCandidateCategory.Vehicle, EuroEmissionClass.FindCandidatesInText);
+        var swedishEcoClassifications = ScanType(text, options, TextCandidateCategory.Vehicle, SwedishEcoVehicleClassification.FindCandidatesInText);
         var tireDimensions = ScanType(text, options, TextCandidateCategory.Vehicle, TireDimension.FindCandidatesInText);
         var drivingLicenseCategories = ScanType(text, options, TextCandidateCategory.Vehicle, SwedishDrivingLicenseCategory.FindCandidatesInText);
         var swishNumbers = ScanType(text, options, TextCandidateCategory.Financial, SwedishSwishNumber.FindCandidatesInText);
@@ -115,7 +117,7 @@ public sealed class TextScanner
             regs, vins, operatingHours, boltPatterns,
             wheelRimDimensions, euTypeApprovals, enginePowers, fuelConsumptions, emissionRates,
             props,
-            gtin13s, gtin8s, gtin12s, gtin14s, ipRatings, electricalPhases,
+            gtin13s, gtin8s, gtin12s, gtin14s, ipRatings, electricalPhases, refrigerants,
             countries, municipalities, counties,
             urls,
             lengths, areas, volumes, weights, energies, powers,
@@ -123,7 +125,7 @@ public sealed class TextScanner
             speeds, temperatures, dataSizes, pressures, percentages,
             electricCurrents, flowRates, luminousFluxes,
             rotationalSpeeds, soundLevels,
-            euroEmissionClasses, tireDimensions,
+            euroEmissionClasses, swedishEcoClassifications, tireDimensions,
             colors, screenResolutions, screenSizes,
             drivingLicenseCategories, swishNumbers);
     }

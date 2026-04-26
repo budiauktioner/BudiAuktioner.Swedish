@@ -100,4 +100,33 @@ public static class VehicleMaskingExtensions
         var parts = er.Value.Split(' ', 2);
         return parts.Length == 2 ? $"{new string(MaskChar, 3)} {parts[1]}" : new string(MaskChar, er.Value.Length);
     }
+
+    /// <summary>
+    /// Returns a masked fuel consumption norm, e.g. <c>WLTP</c> → <c>****</c>.
+    /// </summary>
+    public static string ToMaskedString(this FuelConsumptionNorm norm) =>
+        new(MaskChar, norm.Value.Length);
+
+    /// <summary>
+    /// Returns a masked boat CE design category, e.g. <c>A</c> → <c>*</c>.
+    /// </summary>
+    public static string ToMaskedString(this BoatCeDesignCategory category) =>
+        new(MaskChar, category.Value.Length);
+
+    /// <summary>
+    /// Returns a masked boat hull material, e.g. <c>Fiberglass</c> → <c>**********</c>.
+    /// </summary>
+    public static string ToMaskedString(this BoatHullMaterial material) =>
+        new(MaskChar, material.Value.Length);
+
+    /// <summary>
+    /// Returns a masked Swedish eco-vehicle classification, e.g. <c>Miljöbil 2013</c> → <c>Miljöbil ****</c>.
+    /// </summary>
+    public static string ToMaskedString(this SwedishEcoVehicleClassification classification)
+    {
+        var v = classification.Value;
+        var space = v.IndexOf(' ');
+        if (space < 0) return new string(MaskChar, v.Length);
+        return $"{v[..space]} {new string(MaskChar, v.Length - space - 1)}";
+    }
 }

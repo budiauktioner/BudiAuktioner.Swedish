@@ -46,4 +46,28 @@ public static class ProductMaskingExtensions
     /// </summary>
     public static string ToMaskedString(this ElectricalPhase ep) =>
         $"{new string(MaskChar, ep.PhaseCount.ToString().Length)}-phase";
+
+    /// <summary>
+    /// Returns a masked refrigerant designation showing the R prefix and masking the rest,
+    /// e.g. <c>R-134a</c> → <c>R-****</c>.
+    /// </summary>
+    public static string ToMaskedString(this Refrigerant refrigerant)
+    {
+        var v = refrigerant.Value;
+        if (v.StartsWith("R-", StringComparison.OrdinalIgnoreCase))
+            return $"R-{new string(MaskChar, v.Length - 2)}";
+        return $"R{new string(MaskChar, Math.Max(0, v.Length - 1))}";
+    }
+
+    /// <summary>
+    /// Returns a masked aspect ratio, e.g. <c>16:9</c> → <c>**:*</c>.
+    /// </summary>
+    public static string ToMaskedString(this AspectRatio ratio) =>
+        $"{new string(MaskChar, ratio.Width.ToString().Length)}:{new string(MaskChar, ratio.Height.ToString().Length)}";
+
+    /// <summary>
+    /// Returns a masked battery chemistry, e.g. <c>Li-ion</c> → <c>******</c>.
+    /// </summary>
+    public static string ToMaskedString(this BatteryChemistry chemistry) =>
+        new(MaskChar, chemistry.Value.Length);
 }

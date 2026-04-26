@@ -183,7 +183,11 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Operating Hours | Drifttimmar | Machine operating hours meter reading | `Buildi.Primitives.Vehicle.OperatingHours` |
 | Bolt Pattern | Bultcirkelmått | Wheel bolt pattern, e.g. 5x114.3 | `Buildi.Primitives.Vehicle.BoltPattern` |
 | Fuel Consumption | Bränsleförbrukning | Fuel consumption in l/100km, km/l, mpg, kWh/100km | `Buildi.Primitives.Vehicle.FuelConsumption` |
+| Fuel Consumption Norm | Förbrukningsnorm | Regulatory test cycle for fuel/energy consumption (NEDC, WLTP, EPA, etc.) | `Buildi.Primitives.Vehicle.FuelConsumptionNorm` |
 | Emission Rate | Utsläpp | Vehicle emission rate in g/km or mg/km | `Buildi.Primitives.Vehicle.EmissionRate` |
+| Boat CE Design Category | Båt CE-konstruktionskategori | EU Recreational Craft design category A/B/C/D (ISO 12217) with wave/wind ratings | `Buildi.Primitives.Vehicle.BoatCeDesignCategory` |
+| Boat Hull Material | Båt skrovmaterial | Boat hull material (Glasfiber/Aluminium/Stål/Trä/Plast/Kolfiber/Hypalon) | `Buildi.Primitives.Vehicle.BoatHullMaterial` |
+| Swedish Eco-Vehicle Classification | Miljöbilsklassning | Swedish miljöbil/klimatbonusbil classification with year ranges | `Buildi.Primitives.Vehicle.SwedishEcoVehicleClassification` |
 
 ## Product
 
@@ -205,6 +209,7 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Shoe Size | Skostorlek | Generic shoe size auto-detecting adult or child | `Buildi.Primitives.Product.ShoeSize` |
 | Screen Size | Skärmstorlek | Screen diagonal measurement, defaults to inches | `Buildi.Primitives.Product.ScreenSize` |
 | Screen Resolution | Skärmupplösning | Screen resolution (e.g. 1920x1080, Full HD, 4K) | `Buildi.Primitives.Product.ScreenResolution` |
+| Aspect Ratio | Bildförhållande | Width-to-height aspect ratio (4:3, 16:9, 21:9, 32:9, decimal) | `Buildi.Primitives.Product.AspectRatio` |
 | Energy Efficiency Class | Energiklass | EU energy efficiency label (A+++–G) | `Buildi.Primitives.Product.EuEnergyEfficiencyClass` |
 | Operating System Name | Operativsystem | Canonical OS name (Windows, macOS, Ubuntu, etc.) | `Buildi.Primitives.Product.OperatingSystemName` |
 | Operating System Version | OS-version | Version string with major/minor/patch parsing | `Buildi.Primitives.Product.OperatingSystemVersion` |
@@ -213,6 +218,8 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | RAM Capacity | Arbetsminne | RAM/memory capacity, defaults to GB | `Buildi.Primitives.Product.RamCapacity` |
 | Processor Speed | Processorhastighet | CPU clock speed, defaults to GHz | `Buildi.Primitives.Product.ProcessorSpeed` |
 | Battery Capacity | Batterikapacitet | Battery capacity in mAh or Wh | `Buildi.Primitives.Product.BatteryCapacity` |
+| Battery Chemistry | Batterikemi | Battery chemistry (Li-ion, LiFePO4, AGM, Pb-Acid, Gel, NiMH, etc.) with cell voltage | `Buildi.Primitives.Product.BatteryChemistry` |
+| Refrigerant | Köldmedium | ASHRAE 34 refrigerant (R134a, R290, R744, R1234yf, etc.) with GWP and safety class | `Buildi.Primitives.Product.Refrigerant` |
 | Electrical Phase | Fas | Electrical phase configuration (single/three-phase) | `Buildi.Primitives.Product.ElectricalPhase` |
 | Clothing Gender | Klädkön | Clothing target gender (male, female, unisex, boys, girls) | `Buildi.Primitives.Product.ClothingGender` |
 | IP Rating | IP-klass | Ingress Protection rating per IEC 60529 | `Buildi.Primitives.Product.IpRating` |
@@ -260,3 +267,5 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Sound Level | Ljudnivå | Sound pressure level in dB with optional A/B/C/Z weighting | `Buildi.Primitives.Measurement.SoundLevel` |
 | Rotational Speed | Rotationshastighet | Rotational speed in rpm, rps, or rad/s | `Buildi.Primitives.Measurement.RotationalSpeed` |
 | Rotational Speed Unit | Rotationshastighetsenhet | Unit definition for rotational speed | `Buildi.Primitives.Measurement.RotationalSpeedUnit` |
+| Year | År | Four-digit calendar year (e.g. 2024) for manufacture/model year fields | `Buildi.Primitives.Measurement.Year` |
+| Year Month | År-månad | Year-and-month value (YYYY-MM) for inspection-valid-until and similar fields | `Buildi.Primitives.Measurement.YearMonth` |

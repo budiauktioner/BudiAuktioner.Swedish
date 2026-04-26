@@ -447,9 +447,13 @@ All types share a consistent API:
 | [`EuTypeApprovalNumber`](#eu-type-approval-number) | Typgodkännandenummer | EU whole-vehicle type-approval number (e.g. e9\*2007/46\*6364\*09) |
 | [`WheelRimDimension`](#wheel-rim-dimension) | Fälgdimension | Wheel rim size notation (e.g. 18x7J) with diameter, width, and flange type |
 | [`FuelConsumption`](#fuel-consumption) | Bränsleförbrukning | Fuel consumption in l/100km, km/l, mpg, or kWh/100km with unit conversions |
+| [`FuelConsumptionNorm`](#fuel-consumption-norm) | Förbrukningsnorm | Regulatory test cycle (NEDC, WLTP, EPA, etc.) used to derive a fuel/energy consumption figure |
 | [`EmissionRate`](#emission-rate) | Utsläpp | Vehicle emission rate in g/km or mg/km for CO₂, NOₓ, etc. |
 | [`OperatingHours`](#operating-hours) | Drifttimmar | Machine operating hours |
 | [`BoltPattern`](#bolt-pattern) | Bultcirkelmått | Wheel bolt pattern |
+| [`BoatCeDesignCategory`](#boat-ce-design-category) | Båt CE-konstruktionskategori | EU Recreational Craft design category A/B/C/D (ISO 12217) with wave/wind ratings |
+| [`BoatHullMaterial`](#boat-hull-material) | Båt skrovmaterial | Boat hull material (Glasfiber/Aluminium/Stål/Trä/Plast/Kolfiber/Hypalon) |
+| [`SwedishEcoVehicleClassification`](#swedish-eco-vehicle-classification) | Miljöbilsklassning | Swedish miljöbil/klimatbonusbil classification with year ranges |
 
 
 **Product** (`Buildi.Primitives.Product`)
@@ -473,6 +477,7 @@ All types share a consistent API:
 | [`ShoeSize`](#shoe-size) | Skostorlek | Generic shoe size auto-detecting adult or child |
 | [`ScreenSize`](#screen-size) | Skärmstorlek | Screen diagonal measurement, defaults to inches |
 | [`ScreenResolution`](#screen-resolution) | Skärmupplösning | Screen resolution (e.g. 1920x1080, Full HD, 4K) |
+| [`AspectRatio`](#aspect-ratio) | Bildförhållande | Width-to-height aspect ratio (4:3, 16:9, 21:9, 32:9) |
 | [`EuEnergyEfficiencyClass`](#energy-efficiency-class) | Energiklass | EU energy efficiency label (A+++–G) |
 | [`OperatingSystemName`](#operating-system-name) | Operativsystem | Canonical OS name (Windows, macOS, Ubuntu, etc.) with family classification |
 | [`OperatingSystemVersion`](#operating-system-version) | OS-version | Version string with major/minor/patch/build parsing and comparison |
@@ -481,6 +486,8 @@ All types share a consistent API:
 | [`RamCapacity`](#ram-capacity) | Arbetsminne | RAM/memory capacity, wraps `DataSize`, defaults to GB |
 | [`ProcessorSpeed`](#processor-speed) | Processorhastighet | CPU clock speed, wraps `Frequency`, defaults to GHz |
 | [`BatteryCapacity`](#battery-capacity) | Batterikapacitet | Battery capacity in mAh or Wh, wraps `ElectricCharge`/`Energy` |
+| [`BatteryChemistry`](#battery-chemistry) | Batterikemi | Battery chemistry (Li-ion, LiFePO4, AGM, Pb-Acid, Gel, NiMH, etc.) with cell voltage |
+| [`Refrigerant`](#refrigerant) | Köldmedium | ASHRAE 34 refrigerant (R134a, R290, R744, R1234yf, …) with GWP and safety class |
 | [`ElectricalPhase`](#electrical-phase) | Fas | Electrical phase configuration (single-phase, two-phase, three-phase) |
 | [`ClothingGender`](#clothing-gender) | Klädkön | Clothing target gender (male, female, unisex, boys, girls) |
 | [`IpRating`](#ip-rating) | IP-klass | Ingress Protection rating |
@@ -524,6 +531,8 @@ All types share a consistent API:
 | [`ElectricCurrent`](#electric-current) | Elektrisk ström | Electric current in A, mA, kA |
 | [`FlowRate`](#flow-rate) | Flöde | Volumetric flow rate in L/min, m³/h |
 | [`LuminousFlux`](#luminous-flux) | Ljusflöde | Luminous flux in lumens |
+| [`Year`](#year) | År | Four-digit calendar year (e.g. 2024) for manufacture/model year fields |
+| [`YearMonth`](#year-month) | År-månad | Year-and-month value (YYYY-MM) for inspection-valid-until and similar fields |
 
 
 ### Validation and formatting behavior
@@ -2751,6 +2760,27 @@ FuelConsumption.IsValid("8.3 l/100km");         // true
 FuelConsumption.Normalize("28 mpg");            // liters per 100km canonical form
 ```
 
+#### Fuel consumption norm
+
+The regulatory test cycle (*förbrukningsnorm*) used to derive a fuel/energy consumption figure: WLTP, NEDC, EPA, JC08, CLTC, etc. Includes region metadata so consumers can correctly compare a vehicle's stated consumption against the cycle that produced it.
+
+Tests: [FuelConsumptionNormTests.cs](test/Buildi.Primitives.Tests/Vehicle/FuelConsumptionNormTests.cs)
+
+- [UNECE — WLTP](https://unece.org/transport/vehicle-regulations-wp29/standards/addenda-1958-agreement-regulations-141-160)
+- [Wikipedia — WLTP](https://en.wikipedia.org/wiki/Worldwide_Harmonised_Light_Vehicles_Test_Procedure)
+
+```csharp
+if (FuelConsumptionNorm.TryParse("WLTP", out var norm))
+{
+    Console.WriteLine(norm!.Value);   // "WLTP"
+    Console.WriteLine(norm.Region);   // "EU"
+}
+
+FuelConsumptionNorm.IsValid("NEDC");          // true
+FuelConsumptionNorm.IsValid("Okänd");         // true
+FuelConsumptionNorm.Normalize("wltp");        // "WLTP"
+```
+
 #### Emission rate
 
 Vehicle emission rate (*utsläpp per körd sträcka*), stored internally as grams per kilometer. Supports g/km, mg/km, and g/mi (US miles) with automatic conversions. Used for reporting CO₂, NOₓ, PM, and other emission measurements.
@@ -2803,6 +2833,71 @@ BoltPattern.TryParse("5x114.3", out var bp);
 BoltPattern.IsValid("5 x 114.3");      // true
 BoltPattern.Format("5x114.3");         // "5 x 114.3"
 BoltPattern.Normalize("5 X 114,3");    // "5x114.3"
+```
+
+#### Boat CE design category
+
+CE design category (*CE-konstruktionskategori*) for recreational craft per the EU Recreational Craft Directive (RCD) 2013/53/EU and ISO 12217: `A` Ocean, `B` Offshore, `C` Inshore, `D` Sheltered waters. Each category exposes the maximum significant wave height and Beaufort wind force the boat is rated for.
+
+Tests: [BoatCeDesignCategoryTests.cs](test/Buildi.Primitives.Tests/Vehicle/BoatCeDesignCategoryTests.cs)
+
+- [Directive 2013/53/EU](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32013L0053)
+- [ISO 12217-1](https://www.iso.org/standard/56707.html)
+
+```csharp
+if (BoatCeDesignCategory.TryParse("Ocean", out var c))
+{
+    Console.WriteLine(c!.Value);                          // "A"
+    Console.WriteLine(c.LocalizedName);                   // "Hav"
+    Console.WriteLine(c.MaxSignificantWaveHeightM);       // 7.0
+    Console.WriteLine(c.MaxBeaufortWindForce);            // 10
+}
+
+BoatCeDesignCategory.IsValid("CE-D");        // true
+BoatCeDesignCategory.IsValid("Kategori B");  // true
+BoatCeDesignCategory.Normalize("ocean");     // "A"
+```
+
+#### Boat hull material
+
+The material used for a boat's hull (*skrovmaterial*), e.g. `Glasfiber`, `Aluminium`, `Stål`, `Trä`, `Plast`, `Kolfiber`, `Hypalon`. Recognises Swedish, English, and trade-jargon synonyms (GRP, GFK, RIB, Roplene, …) and normalises to a canonical English label.
+
+Tests: [BoatHullMaterialTests.cs](test/Buildi.Primitives.Tests/Vehicle/BoatHullMaterialTests.cs)
+
+- [Transportstyrelsen — fritidsbåtar](https://www.transportstyrelsen.se/sv/sjofart/Fritidsbatar/)
+
+```csharp
+if (BoatHullMaterial.TryParse("Glasfiber", out var m))
+{
+    Console.WriteLine(m!.Value);          // "Fiberglass"
+    Console.WriteLine(m.LocalizedName);   // "Glasfiber"
+}
+
+BoatHullMaterial.IsValid("RIB");                // true
+BoatHullMaterial.IsValid("Mahogny");            // true
+BoatHullMaterial.Normalize("Aluminium");        // "Aluminum"
+```
+
+#### Swedish eco-vehicle classification
+
+Swedish miljöbilsklassning used by Transportstyrelsen and the Swedish tax framework: `Miljöbil 2007`, `Miljöbil 2013`, `Supermiljöbil`, `Klimatbonusbil`, `Bonusbil`, `Elbil`. This is a Swedish-specific classification distinct from the EU `EuroEmissionClass`. Each entry carries the year range during which it applied.
+
+Tests: [SwedishEcoVehicleClassificationTests.cs](test/Buildi.Primitives.Tests/Vehicle/SwedishEcoVehicleClassificationTests.cs)
+
+- [Transportstyrelsen — fordon och miljö](https://www.transportstyrelsen.se/)
+- [Skatteverket — förmånsbeskattning av miljöbilar](https://www.skatteverket.se/)
+
+```csharp
+if (SwedishEcoVehicleClassification.TryParse("Miljöbil 2013", out var c))
+{
+    Console.WriteLine(c!.Value);              // "Miljöbil 2013"
+    Console.WriteLine(c.IntroductionYear);    // 2013
+    Console.WriteLine(c.EndYear);             // 2017
+}
+
+SwedishEcoVehicleClassification.IsValid("Klimatbonusbil"); // true
+SwedishEcoVehicleClassification.IsValid("BEV");            // true (→ Elbil)
+SwedishEcoVehicleClassification.Normalize("MB2013");       // "Miljöbil 2013"
 ```
 
 ---
@@ -3151,6 +3246,29 @@ ScreenResolution.Format("4K");            // "3840x2160"
 ScreenResolution.Normalize("Full HD");    // "1920x1080"
 ```
 
+#### Aspect ratio
+
+Width-to-height aspect ratio (*bildförhållande*) used for displays, photos, and video content. Supports the common colon (`16:9`), slash (`16/9`), `x`-separated (`16x9`), and decimal (`1.78`) forms, plus marketing names like `Cinemascope`. Exposes `Width`, `Height`, `Ratio` (as `decimal`), and a friendly `CommonName`.
+
+Tests: [AspectRatioTests.cs](test/Buildi.Primitives.Tests/Product/AspectRatioTests.cs)
+
+- [Wikipedia — Aspect ratio (image)](https://en.wikipedia.org/wiki/Aspect_ratio_(image))
+
+```csharp
+if (AspectRatio.TryParse("16:9", out var ar))
+{
+    Console.WriteLine(ar!.Width);        // 16
+    Console.WriteLine(ar.Height);        // 9
+    Console.WriteLine(ar.Ratio);         // 1.778
+    Console.WriteLine(ar.CommonName);    // "Widescreen (HD)"
+}
+
+AspectRatio.IsValid("21:9");          // true
+AspectRatio.IsValid("4/3");           // true
+AspectRatio.IsValid("1.778");         // true (≈ 16:9)
+AspectRatio.Normalize("16x9");        // "16:9"
+```
+
 #### Energy efficiency class
 
 EU energy efficiency class (*energimärkning*) for appliance labels, supporting both the pre-2021 A+++ scale and the rescaled A–G (2021) scheme. Each value has a numeric rank for ordering (lower is better).
@@ -3315,6 +3433,52 @@ if (BatteryCapacity.TryParse("50 Wh", out var laptopBattery))
 BatteryCapacity.IsValid("5000 mAh");     // true
 BatteryCapacity.IsValid("99.8 Wh");      // true
 BatteryCapacity.Format("5000");          // "5000 mAh"
+```
+
+#### Battery chemistry
+
+Battery chemistry (*batterikemi*) — the electrochemical type of a battery: `Li-ion`, `LiFePO4`, `LiPo`, `LTO`, `NiMH`, `NiCd`, `Pb-Acid`, `AGM`, `Gel`, `Alkaline`, `Zinc-carbon`. Each entry exposes whether the chemistry is rechargeable and its nominal cell voltage, useful when correlating with pack-level voltage figures. Recognises Swedish synonyms such as `Litium-jon`, `Bly`, and `LFP`.
+
+Tests: [BatteryChemistryTests.cs](test/Buildi.Primitives.Tests/Product/BatteryChemistryTests.cs)
+
+- [IEC battery standards](https://www.iec.ch/)
+
+```csharp
+if (BatteryChemistry.TryParse("LiFePO4", out var c))
+{
+    Console.WriteLine(c!.Value);                  // "LiFePO4"
+    Console.WriteLine(c.IsRechargeable);          // true
+    Console.WriteLine(c.NominalCellVoltageV);     // 3.2
+}
+
+BatteryChemistry.IsValid("AGM");          // true
+BatteryChemistry.IsValid("Litium-jon");    // true
+BatteryChemistry.Normalize("LFP");         // "LiFePO4"
+BatteryChemistry.Normalize("Bly");         // "Pb-Acid"
+```
+
+#### Refrigerant
+
+Refrigerant (*köldmedium*) per ASHRAE Standard 34 — the closed list of fluids used in HVAC, heat-pump, and cooling systems: `R134a`, `R290`, `R404A`, `R452A`, `R513A`, `R744` (CO₂), `R1234yf`, etc. Each entry exposes its family (HFC/HFO/HC/Natural/CFC/HCFC), GWP over 100 years, ASHRAE safety class, and whether it is restricted under the EU F-gas regulation. Includes text-scanning support for extracting refrigerant codes from unstructured product copy.
+
+Tests: [RefrigerantTests.cs](test/Buildi.Primitives.Tests/Product/RefrigerantTests.cs)
+
+- [ASHRAE Standard 34](https://www.ashrae.org/technical-resources/standards-and-guidelines)
+- [EU Regulation 517/2014 — F-gas](https://eur-lex.europa.eu/eli/reg/2014/517/oj)
+
+```csharp
+if (Refrigerant.TryParse("R1234yf", out var r))
+{
+    Console.WriteLine(r!.Value);            // "R-1234yf"
+    Console.WriteLine(r.CompactCode);       // "R1234yf"
+    Console.WriteLine(r.Family);            // RefrigerantFamily.Hfo
+    Console.WriteLine(r.Gwp100Year);        // 4
+    Console.WriteLine(r.SafetyClass);       // "A2L"
+}
+
+Refrigerant.IsValid("R-134a");        // true
+Refrigerant.IsValid("R744");          // true (CO₂)
+Refrigerant.Normalize("r 290");       // "R-290"
 ```
 
 #### Electrical phase
@@ -3983,6 +4147,51 @@ LuminousFlux.TryParse("800 lm", out var flux);
 LuminousFlux.IsValid("2.5 klm");      // true
 LuminousFlux.Format("800 lm");        // "800 lm"
 LuminousFlux.Normalize("2.5 klm");    // "2500 lm"
+```
+
+#### Year
+
+A four-digit calendar year (*år*), used for manufacture year, model year, and similar year-precision metadata where a full date would invent precision that is not present in the source. Validates the range 1000–9999 and outputs a canonical four-digit string (`2024`).
+
+Tests: [YearTests.cs](test/Buildi.Primitives.Tests/Measurement/YearTests.cs)
+
+- [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html)
+
+```csharp
+if (Year.TryParse("2024", out var y))
+{
+    Console.WriteLine(y!.Value);   // 2024
+    Console.WriteLine(y);          // "2024"
+}
+
+Year.IsValid("0999");        // false (out of range)
+Year.IsValid("2024");        // true
+Year.Normalize(" 2024 ");    // "2024"
+Year.Create(2024);           // typed factory
+```
+
+#### Year month
+
+A year-and-month value (*år och månad*), e.g. `2026-07`. Designed for fields where day precision is not present in the source — typical for inspection-valid-until dates (`tail-lift-inspection-valid-until-date`), warranty-until dates, and similar. Accepts ISO `YYYY-MM`, slash forms (`07/2026`), and Swedish/English month-name forms (`juli 2026`, `Jul 2026`). Provides chronological ordering and helpers to expand to first/last day of month.
+
+Tests: [YearMonthTests.cs](test/Buildi.Primitives.Tests/Measurement/YearMonthTests.cs)
+
+- [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html)
+
+```csharp
+if (YearMonth.TryParse("juli 2026", out var ym))
+{
+    Console.WriteLine(ym!.ToNormalizedString());   // "2026-07"
+    Console.WriteLine(ym.Year);                    // 2026
+    Console.WriteLine(ym.Month);                   // 7
+    Console.WriteLine(ym.ToFirstDayOfMonth());     // 2026-07-01
+    Console.WriteLine(ym.ToLastDayOfMonth());      // 2026-07-31
+}
+
+YearMonth.IsValid("2026-07");       // true
+YearMonth.IsValid("07/2026");       // true
+YearMonth.Normalize("Jul 2026");    // "2026-07"
+YearMonth.FromDate(new DateOnly(2026, 7, 15));   // 2026-07
 ```
 
 #### Natural unit display

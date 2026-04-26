@@ -83,6 +83,14 @@ public static class MeasurementMaskingExtensions
     public static string ToMaskedString(this RotationalSpeed rs)
         => $"{MaskedNumber} {rs.OriginalUnit.Symbol}";
 
+    /// <summary>Returns a masked year, e.g. <c>2024</c> → <c>****</c>.</summary>
+    public static string ToMaskedString(this Year year)
+        => new('*', 4);
+
+    /// <summary>Returns a masked year-month, e.g. <c>2026-07</c> → <c>****-**</c>.</summary>
+    public static string ToMaskedString(this YearMonth yearMonth)
+        => $"{new string('*', 4)}-{new string('*', 2)}";
+
     /// <summary>Returns a masked sound level, e.g. <c>69 dB(A)</c> → <c>*** dB(A)</c>.</summary>
     public static string ToMaskedString(this SoundLevel sl)
     {

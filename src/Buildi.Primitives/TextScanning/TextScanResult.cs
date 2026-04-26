@@ -67,6 +67,7 @@ public sealed class TextScanResult
     public IReadOnlyList<TextCandidate<Gtin14>> Gtin14s { get; }
     public IReadOnlyList<TextCandidate<IpRating>> IpRatings { get; }
     public IReadOnlyList<TextCandidate<ElectricalPhase>> ElectricalPhases { get; }
+    public IReadOnlyList<TextCandidate<Refrigerant>> Refrigerants { get; }
     public IReadOnlyList<TextCandidate<Country>> Countries { get; }
     public IReadOnlyList<TextCandidate<SwedishMunicipality>> Municipalities { get; }
     public IReadOnlyList<TextCandidate<SwedishCounty>> Counties { get; }
@@ -92,6 +93,7 @@ public sealed class TextScanResult
     public IReadOnlyList<TextCandidate<RotationalSpeed>> RotationalSpeeds { get; }
     public IReadOnlyList<TextCandidate<SoundLevel>> SoundLevels { get; }
     public IReadOnlyList<TextCandidate<EuroEmissionClass>> EuroEmissionClasses { get; }
+    public IReadOnlyList<TextCandidate<SwedishEcoVehicleClassification>> SwedishEcoVehicleClassifications { get; }
     public IReadOnlyList<TextCandidate<TireDimension>> TireDimensions { get; }
     public IReadOnlyList<TextCandidate<Color>> Colors { get; }
     public IReadOnlyList<TextCandidate<ScreenResolution>> ScreenResolutions { get; }
@@ -141,6 +143,7 @@ public sealed class TextScanResult
         IReadOnlyList<TextCandidate<Gtin14>> gtin14s,
         IReadOnlyList<TextCandidate<IpRating>> ipRatings,
         IReadOnlyList<TextCandidate<ElectricalPhase>> electricalPhases,
+        IReadOnlyList<TextCandidate<Refrigerant>> refrigerants,
         IReadOnlyList<TextCandidate<Country>> countries,
         IReadOnlyList<TextCandidate<SwedishMunicipality>> municipalities,
         IReadOnlyList<TextCandidate<SwedishCounty>> counties,
@@ -166,6 +169,7 @@ public sealed class TextScanResult
         IReadOnlyList<TextCandidate<RotationalSpeed>> rotationalSpeeds,
         IReadOnlyList<TextCandidate<SoundLevel>> soundLevels,
         IReadOnlyList<TextCandidate<EuroEmissionClass>> euroEmissionClasses,
+        IReadOnlyList<TextCandidate<SwedishEcoVehicleClassification>> swedishEcoVehicleClassifications,
         IReadOnlyList<TextCandidate<TireDimension>> tireDimensions,
         IReadOnlyList<TextCandidate<Color>> colors,
         IReadOnlyList<TextCandidate<ScreenResolution>> screenResolutions,
@@ -206,6 +210,7 @@ public sealed class TextScanResult
         Gtin14s = gtin14s;
         IpRatings = ipRatings;
         ElectricalPhases = electricalPhases;
+        Refrigerants = refrigerants;
         Countries = countries;
         Municipalities = municipalities;
         Counties = counties;
@@ -231,6 +236,7 @@ public sealed class TextScanResult
         RotationalSpeeds = rotationalSpeeds;
         SoundLevels = soundLevels;
         EuroEmissionClasses = euroEmissionClasses;
+        SwedishEcoVehicleClassifications = swedishEcoVehicleClassifications;
         TireDimensions = tireDimensions;
         Colors = colors;
         ScreenResolutions = screenResolutions;
@@ -291,6 +297,7 @@ public sealed class TextScanResult
         AddRange(all, gtin14s);
         AddRange(all, ipRatings);
         AddRange(all, electricalPhases);
+        AddRange(all, refrigerants);
         AddRange(all, countries);
         AddRange(all, municipalities);
         AddRange(all, counties);
@@ -316,6 +323,7 @@ public sealed class TextScanResult
         AddRange(all, rotationalSpeeds);
         AddRange(all, soundLevels);
         AddRange(all, euroEmissionClasses);
+        AddRange(all, swedishEcoVehicleClassifications);
         AddRange(all, tireDimensions);
         AddRange(all, colors);
         AddRange(all, screenResolutions);
