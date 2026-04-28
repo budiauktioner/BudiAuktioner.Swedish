@@ -249,9 +249,74 @@ public class ColorTests
     [InlineData("mörk")]
     [InlineData("ljusfoo")]
     [InlineData("mörkxyz")]
+    [InlineData("l")]
+    [InlineData("m")]
+    [InlineData("lxyz")]
+    [InlineData("mxyz")]
     public void IsValid_ReturnsFalse_ForInvalidPrefixedColors(string? input)
     {
         Assert.False(Color.IsValid(input));
+    }
+
+    [Theory]
+    [InlineData("Mgrå", "dark grey", "mörkgrå")]
+    [InlineData("Mblå", "dark blue", "mörkblå")]
+    [InlineData("MGRÖN", "dark green", "mörkgrön")]
+    [InlineData("MRÖD", "dark red", "mörkröd")]
+    [InlineData("Lgrå", "light grey", "ljusgrå")]
+    [InlineData("LGRÅ", "light grey", "ljusgrå")]
+    [InlineData("LBLÅ", "light blue", "ljusblå")]
+    [InlineData("LBRUN", "light brown", "ljusbrun")]
+    [InlineData("Lgrön", "light green", "ljusgrön")]
+    [InlineData("Lgul", "light yellow", "ljusgul")]
+    [InlineData("LRÖD", "light red", "ljusröd")]
+    [InlineData("M grå", "dark grey", "mörkgrå")]
+    [InlineData("L blå", "light blue", "ljusblå")]
+    [InlineData("M-grå", "dark grey", "mörkgrå")]
+    public void TryParse_SingleLetterAbbreviationPrefixes(string input, string expectedEn, string expectedSv)
+    {
+        var ok = Color.TryParse(input, out var c);
+
+        Assert.True(ok);
+        Assert.NotNull(c);
+        Assert.Equal(expectedEn, c.NameEnglish);
+        Assert.Equal(expectedSv, c.NameSwedish);
+    }
+
+    [Theory]
+    [InlineData("Lila")]
+    [InlineData("Lime")]
+    [InlineData("Lavender")]
+    [InlineData("Lavendel")]
+    [InlineData("Magenta")]
+    [InlineData("Maroon")]
+    [InlineData("Marinblå")]
+    public void TryParse_SingleLetterPrefix_DoesNotShadowNamedColors(string input)
+    {
+        var ok = Color.TryParse(input, out var c);
+
+        Assert.True(ok);
+        Assert.NotNull(c);
+        Assert.NotNull(c.NameEnglish);
+        Assert.False(c.NameEnglish!.StartsWith("light", StringComparison.OrdinalIgnoreCase));
+        Assert.False(c.NameEnglish.StartsWith("dark", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("vinröd", 0x80, 0x00, 0x20, "burgundy", "vinröd")]
+    [InlineData("burgundy", 0x80, 0x00, 0x20, "burgundy", "vinröd")]
+    [InlineData("Vinröd", 0x80, 0x00, 0x20, "burgundy", "vinröd")]
+    public void TryParse_Burgundy(string input, byte r, byte g, byte b, string en, string sv)
+    {
+        var ok = Color.TryParse(input, out var c);
+
+        Assert.True(ok);
+        Assert.NotNull(c);
+        Assert.Equal(r, c.R);
+        Assert.Equal(g, c.G);
+        Assert.Equal(b, c.B);
+        Assert.Equal(en, c.NameEnglish);
+        Assert.Equal(sv, c.NameSwedish);
     }
 
     [Fact]

@@ -65,6 +65,7 @@ public sealed class Color : IEquatable<Color>, IComparable<Color>
             (0x80, 0x80, 0x80, "grey", "grå"),
             (0xFF, 0x63, 0x47, "tomato", "tomat"),
             (0xDD, 0xA0, 0xDD, "plum", "plommon"),
+            (0x80, 0x00, 0x20, "burgundy", "vinröd"),
         };
 
         var byName = new Dictionary<string, (byte, byte, byte, string, string)>(StringComparer.OrdinalIgnoreCase);
@@ -340,23 +341,33 @@ public sealed class Color : IEquatable<Color>, IComparable<Color>
             (byte)Math.Round(b1 * 255.0));
     }
 
-    private static readonly (string SvPrefix, string EnPrefix, double Factor)[] ColorModifiers =
+    /// <summary>
+    /// Color modifier prefixes. Longer prefixes are listed first so that compound words like
+    /// <c>ljusblå</c> match the full <c>ljus</c> prefix before falling through to the single-letter
+    /// <c>l</c> abbreviation. The single-letter <c>m</c>/<c>l</c> forms are common in Swedish
+    /// auction/inventory feeds (e.g. <c>Mgrå</c>, <c>LGRÅ</c>, <c>Mblå</c>, <c>Lgrön</c>).
+    /// </summary>
+    private static readonly (string Prefix, string SvDisplay, string EnDisplay, double Factor)[] ColorModifiers =
     [
-        ("ljus", "light", 0.4),
-        ("mörk", "dark", -0.4),
-        ("blek", "pale", 0.55),
+        ("ljus", "ljus", "light", 0.4),
+        ("mörk", "mörk", "dark", -0.4),
+        ("blek", "blek", "pale", 0.55),
+        ("light", "ljus", "light", 0.4),
+        ("dark", "mörk", "dark", -0.4),
+        ("pale", "blek", "pale", 0.55),
+        ("l", "ljus", "light", 0.4),
+        ("m", "mörk", "dark", -0.4),
     ];
 
     private static bool TryParsePrefixed(string input, out Color? result)
     {
         result = null;
-        foreach (var (svPrefix, enPrefix, factor) in ColorModifiers)
+        foreach (var (prefix, svDisplay, enDisplay, factor) in ColorModifiers)
         {
-            if (TryExtractBaseColor(input, svPrefix, out var entry) ||
-                TryExtractBaseColor(input, enPrefix, out entry))
+            if (TryExtractBaseColor(input, prefix, out var entry))
             {
                 var (r, g, b) = BlendBrightness(entry.R, entry.G, entry.B, factor);
-                result = new Color(r, g, b, $"{enPrefix} {entry.English}", $"{svPrefix}{entry.Swedish}");
+                result = new Color(r, g, b, $"{enDisplay} {entry.English}", $"{svDisplay}{entry.Swedish}");
                 return true;
             }
         }
