@@ -267,5 +267,6 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Sound Level | Ljudnivå | Sound pressure level in dB with optional A/B/C/Z weighting | `Buildi.Primitives.Measurement.SoundLevel` |
 | Rotational Speed | Rotationshastighet | Rotational speed in rpm, rps, or rad/s | `Buildi.Primitives.Measurement.RotationalSpeed` |
 | Rotational Speed Unit | Rotationshastighetsenhet | Unit definition for rotational speed | `Buildi.Primitives.Measurement.RotationalSpeedUnit` |
+| Count | Antal | Non-negative integer count of items (e.g. *antal nycklar*, *antal säten*); parses `5`, `5 st`, `1 345st`, `1.345 stycken` | `Buildi.Primitives.Measurement.Count` |
 | Year | År | Four-digit calendar year (e.g. 2024) for manufacture/model year fields | `Buildi.Primitives.Measurement.Year` |
 | Year Month | År-månad | Year-and-month value (YYYY-MM) for inspection-valid-until and similar fields | `Buildi.Primitives.Measurement.YearMonth` |

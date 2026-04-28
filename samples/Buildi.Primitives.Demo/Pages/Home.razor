@@ -1883,6 +1883,16 @@
             s => SoundLevel.TryParse(s, out var v) ? Metadata($"dB: {v!.Decibels}", $"Weighting: {v.Weighting}") : null,
             TypeMeta: SoundLevel.TypeInfo),
 
+        new(nameof(Count), "Measurement", "1 345 st",
+            s => Count.IsValid(s),
+            s => Count.Format(s),
+            s => Count.Normalize(s),
+            s => Count.IsNormalized(s),
+            s => Count.TryParse(s, out var v) ? v!.ToMaskedString() : null,
+            s => Count.TryParse(s, out var v) ? Metadata($"Value: {v!.Value}") : null,
+            s => Count.TryParse(s, out var v) ? v!.ToNaturalString() : null,
+            TypeMeta: Count.TypeInfo),
+
         new(nameof(Year), "Measurement", "2024",
             s => Year.IsValid(s),
             s => Year.Format(s),

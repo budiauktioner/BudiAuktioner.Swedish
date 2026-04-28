@@ -83,6 +83,10 @@ public static class MeasurementMaskingExtensions
     public static string ToMaskedString(this RotationalSpeed rs)
         => $"{MaskedNumber} {rs.OriginalUnit.Symbol}";
 
+    /// <summary>Returns a masked count, e.g. <c>5 st</c> → <c>*** st</c>.</summary>
+    public static string ToMaskedString(this Count count)
+        => $"{MaskedNumber} st";
+
     /// <summary>Returns a masked year, e.g. <c>2024</c> → <c>****</c>.</summary>
     public static string ToMaskedString(this Year year)
         => new('*', 4);

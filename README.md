@@ -531,6 +531,7 @@ All types share a consistent API:
 | [`ElectricCurrent`](#electric-current) | Elektrisk ström | Electric current in A, mA, kA |
 | [`FlowRate`](#flow-rate) | Flöde | Volumetric flow rate in L/min, m³/h |
 | [`LuminousFlux`](#luminous-flux) | Ljusflöde | Luminous flux in lumens |
+| [`Count`](#count) | Antal | Non-negative integer count of items (e.g. *antal nycklar*, *antal säten*); accepts `5`, `5 st`, `1 345st`, `1.345`, `1,345 stycken` |
 | [`Year`](#year) | År | Four-digit calendar year (e.g. 2024) for manufacture/model year fields |
 | [`YearMonth`](#year-month) | År-månad | Year-and-month value (YYYY-MM) for inspection-valid-until and similar fields |
 
@@ -4147,6 +4148,36 @@ LuminousFlux.TryParse("800 lm", out var flux);
 LuminousFlux.IsValid("2.5 klm");      // true
 LuminousFlux.Format("800 lm");        // "800 lm"
 LuminousFlux.Normalize("2.5 klm");    // "2500 lm"
+```
+
+#### Count
+
+A non-negative integer count of items (*antal*), used for fields like number of keys (*antal nycklar*), number of seats (*antal säten*), number of doors (*antal dörrar*), number of owners, number of units, etc. Accepts a bare integer, the Swedish piece abbreviation `st`/`stycken`, the Norwegian/Danish `stk`, or English equivalents (`pcs`, `pc`, `pieces`, `ea`, `x`). Tolerates thousand separators (`1 345`, `1.345`, `1,345`) but rejects decimal-looking inputs because counts are integers.
+
+Tests: [CountTests.cs](test/Buildi.Primitives.Tests/Measurement/CountTests.cs)
+
+- [TNC — Terminologicentrum](https://www.tnc.se/) — Swedish technical terminology, including `st` as the standard abbreviation for `stycken`
+
+```csharp
+if (Count.TryParse("1 345 st", out var c))
+{
+    Console.WriteLine(c!.Value);                 // 1345
+    Console.WriteLine(c.ToNormalizedString());   // "1345"
+    Console.WriteLine(c);                        // "1 345 st"
+    Console.WriteLine(c.ToNaturalString());      // "1 345"
+}
+
+Count.IsValid("5");           // true
+Count.IsValid("5 st");        // true
+Count.IsValid("5st");         // true
+Count.IsValid("1 345st");     // true
+Count.IsValid("1.345");       // true  (period as thousand separator)
+Count.IsValid("1,5");         // false (decimal — counts are integers)
+Count.IsValid("-5");          // false (must be non-negative)
+
+Count.Normalize("1 345 st");  // "1345"
+Count.Format("1345");         // "1 345 st"
+Count.Create(5);              // typed factory
 ```
 
 #### Year
