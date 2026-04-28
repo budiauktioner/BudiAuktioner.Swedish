@@ -447,6 +447,7 @@ All types share a consistent API:
 | [`EuTypeApprovalNumber`](#eu-type-approval-number) | Typgodkännandenummer | EU whole-vehicle type-approval number (e.g. e9\*2007/46\*6364\*09) |
 | [`WheelRimDimension`](#wheel-rim-dimension) | Fälgdimension | Wheel rim size notation (e.g. 18x7J) with diameter, width, and flange type |
 | [`FuelConsumption`](#fuel-consumption) | Bränsleförbrukning | Fuel consumption in l/100km, km/l, mpg, or kWh/100km with unit conversions |
+| [`EnergyConsumption`](#energy-consumption) | Elförbrukning | Electric energy consumption in kWh/100km, Wh/km, kWh/km, mi/kWh, kWh/mi |
 | [`FuelConsumptionNorm`](#fuel-consumption-norm) | Förbrukningsnorm | Regulatory test cycle (NEDC, WLTP, EPA, etc.) used to derive a fuel/energy consumption figure |
 | [`EmissionRate`](#emission-rate) | Utsläpp | Vehicle emission rate in g/km or mg/km for CO₂, NOₓ, etc. |
 | [`OperatingHours`](#operating-hours) | Drifttimmar | Machine operating hours |
@@ -454,6 +455,10 @@ All types share a consistent API:
 | [`BoatCeDesignCategory`](#boat-ce-design-category) | Båt CE-konstruktionskategori | EU Recreational Craft design category A/B/C/D (ISO 12217) with wave/wind ratings |
 | [`BoatHullMaterial`](#boat-hull-material) | Båt skrovmaterial | Boat hull material (Glasfiber/Aluminium/Stål/Trä/Plast/Kolfiber/Hypalon) |
 | [`SwedishEcoVehicleClassification`](#swedish-eco-vehicle-classification) | Miljöbilsklassning | Swedish miljöbil/klimatbonusbil classification with year ranges |
+| [`BodyType`](#body-type) | Karosstyp | Vehicle body style (Sedan, Kombi, SUV, Off-road/Terrängbil, Coupé, Cabriolet, Van, Pickup, Truck/Lätt lastbil, Trailer, Motorhome, Tractor, Dumper, Tipper, …) |
+| [`SuspensionType`](#suspension-type) | Fjädring | Suspension/damping technology (Coil spring, Air, Hydropneumatic, MacPherson, Multi-link, …) |
+| [`TrackType`](#track-type) | Bandtyp | Continuous-track material on tracked vehicles (Steel/Rubber/Polyurethane/Half-track) |
+| [`TireType`](#tire-type) | Däcktyp | Tire season/use class (Summer/Winter studded/Winter friction/All-season/All-terrain/…) |
 
 
 **Product** (`Buildi.Primitives.Product`)
@@ -491,6 +496,8 @@ All types share a consistent API:
 | [`ElectricalPhase`](#electrical-phase) | Fas | Electrical phase configuration (single-phase, two-phase, three-phase) |
 | [`ClothingGender`](#clothing-gender) | Klädkön | Clothing target gender (male, female, unisex, boys, girls) |
 | [`IpRating`](#ip-rating) | IP-klass | Ingress Protection rating |
+| [`CameraResolution`](#camera-resolution) | Kameraupplösning | Camera image-sensor resolution in megapixels (e.g. 12 MP, 108 megapixels) |
+| [`DisplayPanelType`](#display-panel-type) | Skärmpaneltyp | Display panel technology (LCD/IPS/VA/TN/OLED/AMOLED/QLED/MicroLED/Plasma/CRT/E-Ink) |
 
 
 **Person** (`Buildi.Primitives.Person`)
@@ -531,6 +538,7 @@ All types share a consistent API:
 | [`ElectricCurrent`](#electric-current) | Elektrisk ström | Electric current in A, mA, kA |
 | [`FlowRate`](#flow-rate) | Flöde | Volumetric flow rate in L/min, m³/h |
 | [`LuminousFlux`](#luminous-flux) | Ljusflöde | Luminous flux in lumens |
+| [`Luminance`](#luminance) | Luminans | Luminance (perceived brightness) in cd/m² (nits), kcd/m² |
 | [`Count`](#count) | Antal | Non-negative integer count of items (e.g. *antal nycklar*, *antal säten*); accepts `5`, `5 st`, `1 345st`, `1.345`, `1,345 stycken` |
 | [`Year`](#year) | År | Four-digit calendar year (e.g. 2024) for manufacture/model year fields |
 | [`YearMonth`](#year-month) | År-månad | Year-and-month value (YYYY-MM) for inspection-valid-until and similar fields |

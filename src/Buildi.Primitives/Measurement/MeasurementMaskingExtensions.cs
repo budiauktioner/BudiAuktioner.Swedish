@@ -75,6 +75,10 @@ public static class MeasurementMaskingExtensions
     public static string ToMaskedString(this LuminousFlux flux)
         => $"{MaskedNumber} {flux.OriginalUnit.Symbol}";
 
+    /// <summary>Returns a masked luminance, e.g. <c>500 cd/m²</c> → <c>*** cd/m²</c>.</summary>
+    public static string ToMaskedString(this Luminance luminance)
+        => $"{MaskedNumber} {luminance.OriginalUnit.Symbol}";
+
     /// <summary>Returns a masked percentage, e.g. <c>85%</c> → <c>***%</c>.</summary>
     public static string ToMaskedString(this Percentage percentage)
         => $"{MaskedNumber}%";

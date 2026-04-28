@@ -93,6 +93,15 @@ public static class VehicleMaskingExtensions
     }
 
     /// <summary>
+    /// Returns a masked energy consumption, e.g. <c>15 kWh/100km</c> → <c>*** kWh/100km</c>.
+    /// </summary>
+    public static string ToMaskedString(this EnergyConsumption ec)
+    {
+        var parts = ec.Value.Split(' ', 2);
+        return parts.Length == 2 ? $"{new string(MaskChar, 3)} {parts[1]}" : new string(MaskChar, ec.Value.Length);
+    }
+
+    /// <summary>
     /// Returns a masked emission rate, e.g. <c>221 g/km</c> → <c>*** g/km</c>.
     /// </summary>
     public static string ToMaskedString(this EmissionRate er)
@@ -128,5 +137,50 @@ public static class VehicleMaskingExtensions
         var space = v.IndexOf(' ');
         if (space < 0) return new string(MaskChar, v.Length);
         return $"{v[..space]} {new string(MaskChar, v.Length - space - 1)}";
+    }
+
+    /// <summary>
+    /// Returns a masked body type, e.g. <c>Sedan</c> → <c>*****</c>.
+    /// </summary>
+    public static string ToMaskedString(this BodyType bodyType) =>
+        new(MaskChar, bodyType.Value.Length);
+
+    /// <summary>
+    /// Returns a masked suspension type, e.g. <c>Coil spring</c> → <c>**** ******</c>.
+    /// Spaces are preserved so the structure remains recognizable.
+    /// </summary>
+    public static string ToMaskedString(this SuspensionType suspension)
+    {
+        var v = suspension.Value;
+        var sb = new System.Text.StringBuilder(v.Length);
+        foreach (var c in v)
+            sb.Append(c == ' ' ? ' ' : MaskChar);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Returns a masked track type, e.g. <c>Steel</c> → <c>*****</c>, <c>Half-track</c> → <c>****-*****</c>.
+    /// Hyphens are preserved.
+    /// </summary>
+    public static string ToMaskedString(this TrackType track)
+    {
+        var v = track.Value;
+        var sb = new System.Text.StringBuilder(v.Length);
+        foreach (var c in v)
+            sb.Append(c is '-' or ' ' ? c : MaskChar);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Returns a masked tire type, e.g. <c>Summer</c> → <c>******</c>, <c>Winter (studded)</c> → <c>****** (*******)</c>.
+    /// Spaces and parentheses are preserved.
+    /// </summary>
+    public static string ToMaskedString(this TireType tireType)
+    {
+        var v = tireType.Value;
+        var sb = new System.Text.StringBuilder(v.Length);
+        foreach (var c in v)
+            sb.Append(c is ' ' or '(' or ')' or '-' ? c : MaskChar);
+        return sb.ToString();
     }
 }

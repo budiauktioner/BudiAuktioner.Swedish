@@ -183,11 +183,16 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Operating Hours | Drifttimmar | Machine operating hours meter reading | `Buildi.Primitives.Vehicle.OperatingHours` |
 | Bolt Pattern | Bultcirkelmått | Wheel bolt pattern, e.g. 5x114.3 | `Buildi.Primitives.Vehicle.BoltPattern` |
 | Fuel Consumption | Bränsleförbrukning | Fuel consumption in l/100km, km/l, mpg, kWh/100km | `Buildi.Primitives.Vehicle.FuelConsumption` |
+| Energy Consumption | Elförbrukning | Electric energy consumption in kWh/100km, Wh/km, kWh/km, mi/kWh, kWh/mi | `Buildi.Primitives.Vehicle.EnergyConsumption` |
 | Fuel Consumption Norm | Förbrukningsnorm | Regulatory test cycle for fuel/energy consumption (NEDC, WLTP, EPA, etc.) | `Buildi.Primitives.Vehicle.FuelConsumptionNorm` |
 | Emission Rate | Utsläpp | Vehicle emission rate in g/km or mg/km | `Buildi.Primitives.Vehicle.EmissionRate` |
 | Boat CE Design Category | Båt CE-konstruktionskategori | EU Recreational Craft design category A/B/C/D (ISO 12217) with wave/wind ratings | `Buildi.Primitives.Vehicle.BoatCeDesignCategory` |
 | Boat Hull Material | Båt skrovmaterial | Boat hull material (Glasfiber/Aluminium/Stål/Trä/Plast/Kolfiber/Hypalon) | `Buildi.Primitives.Vehicle.BoatHullMaterial` |
 | Swedish Eco-Vehicle Classification | Miljöbilsklassning | Swedish miljöbil/klimatbonusbil classification with year ranges | `Buildi.Primitives.Vehicle.SwedishEcoVehicleClassification` |
+| Body Type | Karosstyp | Vehicle body style (Sedan, Kombi, SUV, Off-road/Terrängbil, Coupé, Cabriolet, Van, Pickup, Truck/Lätt lastbil, Trailer, Motorhome, Tractor, Dumper, Tipper, …) | `Buildi.Primitives.Vehicle.BodyType` |
+| Suspension Type | Fjädring | Suspension/damping technology (Coil spring, Air, Hydropneumatic, MacPherson, Multi-link, …) | `Buildi.Primitives.Vehicle.SuspensionType` |
+| Track Type | Bandtyp | Continuous-track material on tracked vehicles (Steel/Rubber/Polyurethane/Half-track) | `Buildi.Primitives.Vehicle.TrackType` |
+| Tire Type | Däcktyp | Tire season/use class (Summer/Winter studded/Winter friction/All-season/All-terrain/…) | `Buildi.Primitives.Vehicle.TireType` |
 
 ## Product
 
@@ -223,6 +228,8 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Electrical Phase | Fas | Electrical phase configuration (single/three-phase) | `Buildi.Primitives.Product.ElectricalPhase` |
 | Clothing Gender | Klädkön | Clothing target gender (male, female, unisex, boys, girls) | `Buildi.Primitives.Product.ClothingGender` |
 | IP Rating | IP-klass | Ingress Protection rating per IEC 60529 | `Buildi.Primitives.Product.IpRating` |
+| Camera Resolution | Kameraupplösning | Camera image-sensor resolution in megapixels (e.g. 12 MP, 108 megapixels) | `Buildi.Primitives.Product.CameraResolution` |
+| Display Panel Type | Skärmpaneltyp | Display panel technology (LCD/IPS/VA/TN/OLED/AMOLED/QLED/MicroLED/Plasma/CRT/E-Ink) | `Buildi.Primitives.Product.DisplayPanelType` |
 
 ## Measurement
 
@@ -250,6 +257,8 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Flow Rate Unit | Flödesenhet | Unit definition for flow rate | `Buildi.Primitives.Measurement.FlowRateUnit` |
 | Luminous Flux | Ljusflöde | Luminous flux in lumens, kilolumens | `Buildi.Primitives.Measurement.LuminousFlux` |
 | Luminous Flux Unit | Ljusflödesenhet | Unit definition for luminous flux | `Buildi.Primitives.Measurement.LuminousFluxUnit` |
+| Luminance | Luminans | Luminance (perceived brightness) in cd/m² (nits), kcd/m² | `Buildi.Primitives.Measurement.Luminance` |
+| Luminance Unit | Luminansenhet | Unit definition for luminance | `Buildi.Primitives.Measurement.LuminanceUnit` |
 | Torque | Vridmoment | Torque in Nm, ft-lb, kgf-m | `Buildi.Primitives.Measurement.Torque` |
 | Torque Unit | Vridmomentsenhet | Unit definition for torque | `Buildi.Primitives.Measurement.TorqueUnit` |
 | Frequency | Frekvens | Frequency in Hz, kHz, MHz, GHz, RPM | `Buildi.Primitives.Measurement.Frequency` |

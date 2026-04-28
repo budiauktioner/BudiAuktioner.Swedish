@@ -70,4 +70,16 @@ public static class ProductMaskingExtensions
     /// </summary>
     public static string ToMaskedString(this BatteryChemistry chemistry) =>
         new(MaskChar, chemistry.Value.Length);
+
+    /// <summary>
+    /// Returns a masked camera resolution, e.g. <c>12.2 MP</c> → <c>*** MP</c>.
+    /// </summary>
+    public static string ToMaskedString(this CameraResolution resolution) =>
+        $"{new string(MaskChar, 3)} MP";
+
+    /// <summary>
+    /// Returns a masked display panel type, e.g. <c>OLED</c> → <c>****</c>.
+    /// </summary>
+    public static string ToMaskedString(this DisplayPanelType panel) =>
+        new(MaskChar, panel.Value.Length);
 }
