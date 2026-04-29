@@ -183,4 +183,10 @@ public static class VehicleMaskingExtensions
             sb.Append(c is ' ' or '(' or ')' or '-' ? c : MaskChar);
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Returns a masked drive type, e.g. <c>AWD</c> → <c>***</c>, <c>FWD</c> → <c>***</c>.
+    /// </summary>
+    public static string ToMaskedString(this DrivetrainType driveType) =>
+        new(MaskChar, driveType.Value.Length);
 }

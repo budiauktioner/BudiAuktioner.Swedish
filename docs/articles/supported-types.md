@@ -193,6 +193,7 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Suspension Type | Fjädring | Suspension/damping technology (Coil spring, Air, Hydropneumatic, MacPherson, Multi-link, …) | `Buildi.Primitives.Vehicle.SuspensionType` |
 | Track Type | Bandtyp | Continuous-track material on tracked vehicles (Steel/Rubber/Polyurethane/Half-track) | `Buildi.Primitives.Vehicle.TrackType` |
 | Tire Type | Däcktyp | Tire season/use class (Summer/Winter studded/Winter friction/All-season/All-terrain/…) | `Buildi.Primitives.Vehicle.TireType` |
+| Drivetrain Type | Drivning | Drivetrain layout (AWD/4WD/quattro, FWD, RWD) with driven-axle count | `Buildi.Primitives.Vehicle.DrivetrainType` |
 
 ## Product
 
@@ -230,6 +231,10 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | IP Rating | IP-klass | Ingress Protection rating per IEC 60529 | `Buildi.Primitives.Product.IpRating` |
 | Camera Resolution | Kameraupplösning | Camera image-sensor resolution in megapixels (e.g. 12 MP, 108 megapixels) | `Buildi.Primitives.Product.CameraResolution` |
 | Display Panel Type | Skärmpaneltyp | Display panel technology (LCD/IPS/VA/TN/OLED/AMOLED/QLED/MicroLED/Plasma/CRT/E-Ink) | `Buildi.Primitives.Product.DisplayPanelType` |
+| Clothing Season | Säsong | Seasonal product classification (Spring/Summer/Autumn/Winter/All-Season) with months covered | `Buildi.Primitives.Product.ClothingSeason` |
+| Clothing Fit | Passform | Garment silhouette/fit (Slim/Regular/Loose/Oversized/Tailored) | `Buildi.Primitives.Product.ClothingFit` |
+| Storage Media Type | Lagringsmedia | Storage media technology (HDD/SSHD/SSD/NVMe/eMMC/UFS/Flash/Optane) with family and solid-state flag | `Buildi.Primitives.Product.StorageMediaType` |
+| Power Source | Strömkälla | Generic device power source (Electric/Battery/Solar/Hybrid/Petrol/Diesel/Hydrogen/Pneumatic/Hydraulic/Manual) | `Buildi.Primitives.Product.PowerSource` |
 
 ## Measurement
 

@@ -82,4 +82,35 @@ public static class ProductMaskingExtensions
     /// </summary>
     public static string ToMaskedString(this DisplayPanelType panel) =>
         new(MaskChar, panel.Value.Length);
+
+    /// <summary>
+    /// Returns a masked clothing season, e.g. <c>Spring</c> → <c>******</c>, <c>All-Season</c> → <c>**********</c>.
+    /// Hyphens are preserved.
+    /// </summary>
+    public static string ToMaskedString(this ClothingSeason season)
+    {
+        var v = season.Value;
+        var sb = new System.Text.StringBuilder(v.Length);
+        foreach (var c in v)
+            sb.Append(c == '-' ? c : MaskChar);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Returns a masked clothing fit, e.g. <c>Slim</c> → <c>****</c>, <c>Oversized</c> → <c>*********</c>.
+    /// </summary>
+    public static string ToMaskedString(this ClothingFit fit) =>
+        new(MaskChar, fit.Value.Length);
+
+    /// <summary>
+    /// Returns a masked storage media type, e.g. <c>SSD</c> → <c>***</c>, <c>NVMe</c> → <c>****</c>.
+    /// </summary>
+    public static string ToMaskedString(this StorageMediaType storage) =>
+        new(MaskChar, storage.Value.Length);
+
+    /// <summary>
+    /// Returns a masked power source, e.g. <c>Electric</c> → <c>********</c>.
+    /// </summary>
+    public static string ToMaskedString(this PowerSource source) =>
+        new(MaskChar, source.Value.Length);
 }

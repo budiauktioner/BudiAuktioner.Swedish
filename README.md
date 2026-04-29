@@ -91,9 +91,9 @@ This package contains strongly typed, self-validating value objects covering:
 - **Contact & web** — phone numbers, email addresses, URLs, addresses (with strict country-specific variants for 32 European countries), person names, person age
 - **Geography** — countries, counties, municipalities, geographic coordinates (with distance calculations), zip codes, phone calling codes
 - **Property** — property designations, taxation codes
-- **Vehicles** — registration numbers, VINs, driving license categories, fuel types, transmissions, EU vehicle categories, type approval numbers, operating hours, bolt patterns
-- **Product & commerce** — GTINs, HS codes, Google product categories, colors, clothing genders, clothing/shoe sizes, IP ratings
-- **Technology** — screen sizes/resolutions, energy efficiency classes, electrical phases, operating systems, storage/RAM capacity, processor speed, battery capacity
+- **Vehicles** — registration numbers, VINs, driving license categories, fuel types, transmissions, drivetrain layout (AWD/FWD/RWD), EU vehicle categories, type approval numbers, operating hours, bolt patterns
+- **Product & commerce** — GTINs, HS codes, Google product categories, colors, clothing genders, clothing seasons, clothing fits, clothing/shoe sizes, power sources, IP ratings
+- **Technology** — screen sizes/resolutions, energy efficiency classes, electrical phases, operating systems, storage media type, storage/RAM capacity, processor speed, battery capacity
 - **Measurements** — 21 unit types including length, area, volume, weight, energy, power, speed, temperature, pressure, voltage, electric current, flow rate, luminous flux, and more
 
 Cross-cutting features: [`ToMaskedString()`](#masking-extension-methods) for safe PII display, [`Validate()`](#structured-validation) with machine-readable reason codes and bilingual descriptions, [text scanning](#text-scanning) for heuristic extraction from unstructured text with confidence scoring and bulk redaction, and [`ToNaturalString()`](#natural-unit-display) for automatic human-friendly unit selection on measurement types.
@@ -166,6 +166,7 @@ All validation and normalization in this package is performed in-memory using ru
     - [Driving license category](#driving-license-category)
     - [Fuel type](#fuel-type)
     - [Transmission type](#transmission-type)
+    - [Drivetrain type](#drivetrain-type)
     - [Swedish vehicle type](#swedish-vehicle-type)
     - [Swedish vehicle status](#swedish-vehicle-status)
     - [EU vehicle category](#eu-vehicle-category)
@@ -200,6 +201,10 @@ All validation and normalization in this package is performed in-memory using ru
     - [Battery capacity](#battery-capacity)
     - [Electrical phase](#electrical-phase)
     - [Clothing gender](#clothing-gender)
+    - [Clothing season](#clothing-season)
+    - [Clothing fit](#clothing-fit)
+    - [Storage media type](#storage-media-type)
+    - [Power source](#power-source)
   - [Person](#person)
     - [Person given name](#person-given-name)
     - [Person family name](#person-family-name)
@@ -459,6 +464,7 @@ All types share a consistent API:
 | [`SuspensionType`](#suspension-type) | Fjädring | Suspension/damping technology (Coil spring, Air, Hydropneumatic, MacPherson, Multi-link, …) |
 | [`TrackType`](#track-type) | Bandtyp | Continuous-track material on tracked vehicles (Steel/Rubber/Polyurethane/Half-track) |
 | [`TireType`](#tire-type) | Däcktyp | Tire season/use class (Summer/Winter studded/Winter friction/All-season/All-terrain/…) |
+| [`DrivetrainType`](#drivetrain-type) | Drivning | Drivetrain layout (AWD/4WD/quattro, FWD, RWD) with driven-axle count |
 
 
 **Product** (`Buildi.Primitives.Product`)
@@ -498,6 +504,10 @@ All types share a consistent API:
 | [`IpRating`](#ip-rating) | IP-klass | Ingress Protection rating |
 | [`CameraResolution`](#camera-resolution) | Kameraupplösning | Camera image-sensor resolution in megapixels (e.g. 12 MP, 108 megapixels) |
 | [`DisplayPanelType`](#display-panel-type) | Skärmpaneltyp | Display panel technology (LCD/IPS/VA/TN/OLED/AMOLED/QLED/MicroLED/Plasma/CRT/E-Ink) |
+| [`ClothingSeason`](#clothing-season) | Säsong | Seasonal product classification (Spring/Summer/Autumn/Winter/All-Season) with months covered |
+| [`ClothingFit`](#clothing-fit) | Passform | Garment silhouette/fit (Slim/Regular/Loose/Oversized/Tailored) |
+| [`StorageMediaType`](#storage-media-type) | Lagringsmedia | Storage media technology (HDD/SSHD/SSD/NVMe/eMMC/UFS/Flash/Optane) with family and solid-state flag |
+| [`PowerSource`](#power-source) | Strömkälla | Generic device power source (Electric/Battery/Solar/Hybrid/Petrol/Diesel/Hydrogen/Pneumatic/Hydraulic/Manual) |
 
 
 **Person** (`Buildi.Primitives.Person`)
@@ -2635,6 +2645,30 @@ TransmissionType.IsValid("Tiptronic");       // true (alias for Automatic)
 TransmissionType.Normalize("stick");         // "Manual"
 ```
 
+#### Drivetrain type
+
+Drivetrain layout (*drivning*) of a road vehicle: `AWD` (all-wheel drive, *fyrhjulsdrift*), `FWD` (front-wheel drive, *framhjulsdrift*), or `RWD` (rear-wheel drive, *bakhjulsdrift*). Each entry exposes the canonical short code, English/Swedish display names, and `DrivenAxleCount` (1 or 2). Recognises Swedish forms (*fyrhjulsdriven*, *framhjulsdrift*, *bakhjulsdrift*), part-time off-road notation (`4WD`, `4x4`), and common manufacturer marketing names (`4Motion`, `4Matic`, `quattro`, `xDrive`) — all of which are accepted as aliases for `AWD`.
+
+Tests: [DrivetrainTypeTests.cs](test/Buildi.Primitives.Tests/Vehicle/DrivetrainTypeTests.cs)
+
+- [Wikipedia — Drive wheel](https://en.wikipedia.org/wiki/Drive_wheel)
+- [Wikipedia — All-wheel drive](https://en.wikipedia.org/wiki/All-wheel_drive)
+
+```csharp
+if (DrivetrainType.TryParse("quattro", out var dt))
+{
+    Console.WriteLine(dt!.Value);             // "AWD"
+    Console.WriteLine(dt.LocalizedName);      // "Fyrhjulsdrift"
+    Console.WriteLine(dt.EnglishName);        // "All-wheel drive"
+    Console.WriteLine(dt.DrivenAxleCount);    // 2
+}
+
+DrivetrainType.IsValid("4x4");                // true (alias for AWD)
+DrivetrainType.IsValid("framhjulsdrift");     // true
+DrivetrainType.Normalize("Fyrhjulsdriven");   // "AWD"
+DrivetrainType.Normalize("Bakhjulsdrift");    // "RWD"
+```
+
 #### Swedish vehicle type
 
 Swedish vehicle type classification (*fordonsslag*) as used by Transportstyrelsen. The type covers 17 vehicle types from passenger cars (PB) and trucks (LB) to snowmobiles (SNSK) and A-tractors (AT). Parsing accepts Transportstyrelsen codes, Swedish names, English names, and common synonyms.
@@ -3534,6 +3568,110 @@ ClothingGender.IsValid("herr");               // true
 ClothingGender.IsValid("kvinna");             // true
 ClothingGender.Normalize("herr");             // "Male"
 ClothingGender.Normalize("pojke");            // "Boys"
+```
+
+#### Clothing season
+
+Seasonal product classification (*säsong*) used in fashion product feeds and outdoor/equipment retail catalogs: `Spring`, `Summer`, `Autumn`, `Winter`, `All-Season`. Each entry exposes the calendar months it typically covers in the Northern Hemisphere and an `IsAllSeason` flag for year-round products. Parsing accepts English (`spring`, `fall`), Swedish (`vår`, `höst`, `året runt`), fashion-cycle abbreviations (`SS`, `AW`, `FW`), and common synonyms (`year-round`, `4-season`, `helår`).
+
+Tests: [ClothingSeasonTests.cs](test/Buildi.Primitives.Tests/Product/ClothingSeasonTests.cs)
+
+- [Google Merchant Center — apparel attributes](https://support.google.com/merchants/answer/6324470)
+- [Wikipedia — Season](https://en.wikipedia.org/wiki/Season)
+
+```csharp
+using Buildi.Primitives.Product;
+
+if (ClothingSeason.TryParse("höst", out var season))
+{
+    Console.WriteLine(season!.Value);          // "Autumn"
+    Console.WriteLine(season.LocalizedName);   // "Höst"
+    Console.WriteLine(season.EnglishName);     // "Autumn"
+    Console.WriteLine(string.Join(",", season.MonthsCovered));  // "9,10,11"
+    Console.WriteLine(season.IsAllSeason);     // false
+}
+
+ClothingSeason.IsValid("vår");                 // true
+ClothingSeason.IsValid("AW");                  // true (alias for Autumn)
+ClothingSeason.Normalize("Året runt");         // "All-Season"
+ClothingSeason.Normalize("year round");        // "All-Season"
+```
+
+#### Clothing fit
+
+Garment fit/silhouette (*passform*) used in apparel product feeds: `Slim`, `Regular`, `Loose`, `Oversized`, `Tailored`. Complements `AdultClothingSize` (numeric/letter size) and `ClothingGender` (target audience). Recognises Swedish synonyms (`Smal`, `Lös`, `Skräddarsydd`) and common retail aliases (`Skinny`, `Relaxed`, `Boxy`, `Standard`, `Straight`).
+
+Tests: [ClothingFitTests.cs](test/Buildi.Primitives.Tests/Product/ClothingFitTests.cs)
+
+- [Wikipedia — Clothing sizes](https://en.wikipedia.org/wiki/Clothing_sizes)
+
+```csharp
+using Buildi.Primitives.Product;
+
+if (ClothingFit.TryParse("smal", out var fit))
+{
+    Console.WriteLine(fit!.Value);          // "Slim"
+    Console.WriteLine(fit.LocalizedName);   // "Smal"
+    Console.WriteLine(fit.EnglishName);     // "Slim"
+}
+
+ClothingFit.IsValid("oversize");            // true
+ClothingFit.IsValid("Skräddarsydd");        // true
+ClothingFit.Normalize("Boxy");              // "Oversized"
+ClothingFit.Normalize("Relaxed");           // "Loose"
+```
+
+#### Storage media type
+
+Storage media technology (*lagringsmedia*) used in computers, laptops, phones, and consumer electronics: `HDD`, `SSHD`, `SSD`, `NVMe`, `eMMC`, `UFS`, `Flash`, `Optane`. Complements `StorageCapacity` (the size of that storage). Each entry exposes its storage `Family` (HDD/SSHD-Hybrid/SSD/Flash) and `IsSolidState` flag. Recognises Swedish synonyms (`Hårddisk`, `Flashminne`) and common interface aliases (`Solid State Drive`, `Hard Disk Drive`, `PCIe SSD`, `M.2 NVMe`, `e-MMC`, `3D XPoint`).
+
+Tests: [StorageMediaTypeTests.cs](test/Buildi.Primitives.Tests/Product/StorageMediaTypeTests.cs)
+
+- [Wikipedia — Computer data storage](https://en.wikipedia.org/wiki/Computer_data_storage)
+- [Wikipedia — NVM Express](https://en.wikipedia.org/wiki/NVM_Express)
+
+```csharp
+using Buildi.Primitives.Product;
+
+if (StorageMediaType.TryParse("PCIe SSD", out var storage))
+{
+    Console.WriteLine(storage!.Value);          // "NVMe"
+    Console.WriteLine(storage.EnglishName);     // "NVMe SSD"
+    Console.WriteLine(storage.Family);          // "SSD"
+    Console.WriteLine(storage.IsSolidState);    // true
+}
+
+StorageMediaType.IsValid("Hårddisk");                // true
+StorageMediaType.IsValid("Universal Flash Storage"); // true
+StorageMediaType.Normalize("Solid state");           // "SSD"
+StorageMediaType.Normalize("e-MMC");                 // "eMMC"
+StorageMediaType.Normalize("Hybriddisk");            // "SSHD"
+```
+
+#### Power source
+
+Generic power-source classification (*strömkälla* / *drivkälla*) for tools, appliances, garden equipment, and outdoor gear: `Electric`, `Battery`, `Solar`, `Hybrid`, `Petrol`, `Diesel`, `Hydrogen`, `Pneumatic`, `Hydraulic`, `Manual`. Complements `Buildi.Primitives.Vehicle.FuelType`, which is the road-vehicle–specific *drivmedel* taxonomy with Transportstyrelsen codes. Each entry exposes `IsElectric`, `IsCombustion`, and `RequiresFuel` flags for filtering. Recognises Swedish synonyms (`El`, `Batteri`, `Sladdlös`, `Bensin`, `Vätgas`, `Tryckluft`, `Muskelkraft`) and common product-feed aliases (`Mains`, `Corded`, `Cordless`, `PHEV`, `Fuel cell`).
+
+Tests: [PowerSourceTests.cs](test/Buildi.Primitives.Tests/Product/PowerSourceTests.cs)
+
+- [Schema.org — PowerSupplySpecification](https://schema.org/PowerSupplySpecification)
+
+```csharp
+using Buildi.Primitives.Product;
+
+if (PowerSource.TryParse("sladdlös", out var ps))
+{
+    Console.WriteLine(ps!.Value);            // "Battery"
+    Console.WriteLine(ps.LocalizedName);     // "Batteri"
+    Console.WriteLine(ps.IsElectric);        // true
+    Console.WriteLine(ps.RequiresFuel);      // false
+}
+
+PowerSource.IsValid("bensindriven");         // true
+PowerSource.IsValid("Tryckluft");            // true
+PowerSource.Normalize("Mains");              // "Electric"
+PowerSource.Normalize("PHEV");               // "Hybrid"
+PowerSource.Normalize("Bränslecell");        // "Hydrogen"
 ```
 
 #### IP Rating
