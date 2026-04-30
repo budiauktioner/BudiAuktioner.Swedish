@@ -42,6 +42,17 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
         "90", "91", "92", "93", "94", "95", "98"
     ];
 
+    // Calling codes where a leading '0' immediately after the country code is part of the
+    // subscriber number (typically a landline area code) and must NOT be treated as a
+    // national trunk prefix. Italy is the canonical case: +39 02… (Milan), +39 06… (Rome),
+    // +39 011… (Turin). Italian mobile numbers start with 3, so they are unaffected.
+    // Côte d'Ivoire (+225) is the other notable case post the 2021 renumbering, but is
+    // currently considered out of scope for this Swedish-domain library.
+    private static readonly HashSet<string> CallingCodesWhereLeadingZeroIsSignificant =
+    [
+        "39"
+    ];
+
     /// <summary>
     /// Normalized digits: "00" + country code + subscriber number (e.g. "0046701740633").
     /// </summary>
@@ -139,41 +150,41 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
 
         if (string.IsNullOrEmpty(digitsOnly)) return false;
 
-        string normalized;
+        string e164Part;
 
         if (hasPlus)
         {
             if (digitsOnly.Length < 7 || digitsOnly.Length > 15) return false;
-            normalized = "00" + digitsOnly;
+            e164Part = StripTrunkZeroAfterCallingCode(digitsOnly);
         }
         else if (digitsOnly.StartsWith("00"))
         {
             var countryAndNumber = digitsOnly.Substring(2);
             if (countryAndNumber.Length < 7 || countryAndNumber.Length > 15) return false;
-            normalized = digitsOnly;
+            e164Part = StripTrunkZeroAfterCallingCode(countryAndNumber);
         }
         else if (digitsOnly.StartsWith(defaultCallingCode) && digitsOnly.Length >= defaultCallingCode.Length + 7)
         {
-            var localNumber = digitsOnly.Substring(defaultCallingCode.Length).TrimStart('0');
-            normalized = "00" + defaultCallingCode + localNumber;
+            var subscriber = digitsOnly.Substring(defaultCallingCode.Length);
+            e164Part = defaultCallingCode + StripSingleTrunkZero(defaultCallingCode, subscriber);
         }
         else if (digitsOnly.StartsWith("0"))
         {
-            var localNumber = digitsOnly.TrimStart('0');
-            var totalE164Length = defaultCallingCode.Length + localNumber.Length;
+            var subscriber = StripSingleTrunkZero(defaultCallingCode, digitsOnly);
+            var totalE164Length = defaultCallingCode.Length + subscriber.Length;
             if (totalE164Length < 7 || totalE164Length > 15) return false;
-            normalized = "00" + defaultCallingCode + localNumber;
+            e164Part = defaultCallingCode + subscriber;
         }
         else if (defaultCallingCode == "46" && digitsOnly.Length == 9 && digitsOnly.StartsWith("7"))
         {
-            normalized = "0046" + digitsOnly;
+            e164Part = "46" + digitsOnly;
         }
         else
         {
             return false;
         }
 
-        var e164Part = normalized[2..];
+        var normalized = "00" + e164Part;
         if (e164Part.Length < 7 || e164Part.Length > 15) return false;
 
         var isSwedish = e164Part.StartsWith("46");
@@ -405,13 +416,44 @@ public sealed class PhoneNumber : IEquatable<PhoneNumber>, IComparable<PhoneNumb
     /// </summary>
     public override string ToString() => Formatted;
 
-    private static string ResolveCallingCode(string digits)
+    private static string ResolveCallingCode(string digits) => ResolveCallingCodeFromE164(digits[2..]);
+
+    private static string ResolveCallingCodeFromE164(string e164)
     {
-        var e164 = digits[2..];
         if (e164.Length == 0) return string.Empty;
         if (e164[0] is '1' or '7') return e164[..1];
         if (e164.Length >= 2 && TwoDigitCountryCodes.Contains(e164[..2])) return e164[..2];
         return e164.Length >= 3 ? e164[..3] : e164;
+    }
+
+    /// <summary>
+    /// Strips a single leading <c>0</c> from the subscriber portion of an E.164-form digit
+    /// string when the resolved calling code uses <c>0</c> as its national trunk prefix.
+    /// Calling codes in <see cref="CallingCodesWhereLeadingZeroIsSignificant"/> (e.g. Italy
+    /// <c>+39</c>, where landline area codes start with <c>0</c>) are returned unchanged.
+    /// </summary>
+    private static string StripTrunkZeroAfterCallingCode(string e164Digits)
+    {
+        var callingCode = ResolveCallingCodeFromE164(e164Digits);
+        if (callingCode.Length == 0 || callingCode.Length >= e164Digits.Length) return e164Digits;
+        var subscriber = e164Digits.Substring(callingCode.Length);
+        return callingCode + StripSingleTrunkZero(callingCode, subscriber);
+    }
+
+    /// <summary>
+    /// Strips at most one leading <c>0</c> from <paramref name="subscriber"/> when
+    /// <paramref name="callingCode"/> uses <c>0</c> as its national trunk prefix. For Italy
+    /// (<c>39</c>) and any other code in <see cref="CallingCodesWhereLeadingZeroIsSignificant"/>,
+    /// the subscriber is returned unchanged because the leading <c>0</c> is part of the number.
+    /// Only a single zero is removed — multiple leading zeros are typically input typos and are
+    /// preserved so downstream length validation rejects the number rather than silently
+    /// accepting a malformed value.
+    /// </summary>
+    private static string StripSingleTrunkZero(string callingCode, string subscriber)
+    {
+        if (subscriber.Length == 0 || subscriber[0] != '0') return subscriber;
+        if (CallingCodesWhereLeadingZeroIsSignificant.Contains(callingCode)) return subscriber;
+        return subscriber.Substring(1);
     }
 
     private static bool IsInPtsRange(string localDigits, string prefix, int from, int to)

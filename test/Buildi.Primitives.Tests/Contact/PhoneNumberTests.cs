@@ -520,4 +520,82 @@ public class PhoneNumberTests
         var a = PhoneNumber.Parse("+1-555-123-4567");
         Assert.Equal(1, a.CompareTo(null));
     }
+
+    // --- Trunk-prefix '0' handling: strip after country code unless country is in the
+    // "0 is significant" allow-list (currently only Italy +39). Behavior must be identical
+    // regardless of whether the country code arrives via '+', '00', the defaultCallingCode
+    // match, or the local 0-prefix branch.
+
+    [Theory]
+    // +-prefix branch: stray trunk 0 after the country code is stripped
+    [InlineData("+46 0701740633", "0046701740633")]
+    [InlineData("+460701740633", "0046701740633")]
+    [InlineData("+44 020 7946 0958", "00442079460958")]
+    [InlineData("+370 0738031398", "00370738031398")]   // Lithuania (trunk is 8, not 0 — leading 0 is cruft)
+    // 00-prefix branch: same fix
+    [InlineData("0046 0701740633", "0046701740633")]
+    [InlineData("0044 020 7946 0958", "00442079460958")]
+    [InlineData("003700738031398", "00370738031398")]
+    public void TryParse_StripsStrayTrunkZero_AfterExplicitCountryCode(string input, string expectedDigits)
+    {
+        Assert.True(PhoneNumber.TryParse(input, out var result));
+        Assert.Equal(expectedDigits, result!.Digits);
+    }
+
+    [Theory]
+    // Italy: leading 0 is part of the landline area code (02 Milan, 06 Rome, 011 Turin,
+    // 081 Naples, …). Must NOT be stripped, regardless of input branch.
+    [InlineData("+39 06 12345678", "00390612345678")]
+    [InlineData("+390612345678", "00390612345678")]
+    [InlineData("003906 12345678", "00390612345678")]
+    [InlineData("0039 06 12345678", "00390612345678")]
+    public void TryParse_Italy_LandlineLeadingZero_IsPreserved(string input, string expectedDigits)
+    {
+        Assert.True(PhoneNumber.TryParse(input, out var result));
+        Assert.Equal(expectedDigits, result!.Digits);
+        Assert.Equal("39", result.CountryCallingCode.Value);
+    }
+
+    [Theory]
+    // Italian local-format input parsed with default calling code "39" must keep the 0.
+    [InlineData("0612345678", "39", "00390612345678")]
+    [InlineData("06 1234 5678", "39", "00390612345678")]
+    [InlineData("0119876543", "39", "00390119876543")]
+    public void TryParse_Italy_LocalFormat_WithItalianDefault_PreservesLeadingZero(
+        string input, string defaultCallingCode, string expectedDigits)
+    {
+        Assert.True(PhoneNumber.TryParse(input, defaultCallingCode, out var result));
+        Assert.Equal(expectedDigits, result!.Digits);
+        Assert.Equal("39", result.CountryCallingCode.Value);
+    }
+
+    [Theory]
+    // Italian mobile numbers start with 3 — no leading-zero question, must work normally.
+    [InlineData("+39 340 1234567", "00393401234567")]
+    [InlineData("0039 340 1234567", "00393401234567")]
+    public void TryParse_Italy_MobileNumbers_WithExplicitCountryCode(string input, string expectedDigits)
+    {
+        Assert.True(PhoneNumber.TryParse(input, out var result));
+        Assert.Equal(expectedDigits, result!.Digits);
+    }
+
+    // Note: an Italian local-format mobile number like "3401234567" (no country code, no
+    // leading 0) does NOT parse with default "39", because the parser only has a
+    // country-code-less local fallback for Sweden (`+46` mobile starting with 7). This is a
+    // pre-existing limitation, unrelated to the trunk-zero fix. Italian inputs need the
+    // explicit "+39" or "0039" prefix.
+
+    [Theory]
+    // Same input string, two different default calling codes — must yield branch-consistent
+    // results. The fix removes the prior inconsistency where +-branch and defaultCallingCode-
+    // branch handled trunk zeros differently.
+    [InlineData("+46 0701740633", "+460701740633")]
+    [InlineData("+44 020 7946 0958", "+44207946 0958")]
+    [InlineData("+370 0738031398", "+3700738031398")]
+    public void TryParse_PlusInputAndDigitInput_AreEquivalent(string plusInput, string digitInput)
+    {
+        Assert.True(PhoneNumber.TryParse(plusInput, out var fromPlus));
+        Assert.True(PhoneNumber.TryParse(digitInput, fromPlus!.CountryCallingCode.Value, out var fromDigits));
+        Assert.Equal(fromPlus.Digits, fromDigits!.Digits);
+    }
 }

@@ -188,15 +188,19 @@ public class EmailAddressTests
     [InlineData("user@hotmil.com", "hotmail.com")]
     [InlineData("user@hotmsil.com", "hotmail.com")]
     [InlineData("user@hotmal.com", "hotmail.com")]
+    [InlineData("user@homail.com", "hotmail.com")]
     [InlineData("user@hotnail.com", "hotmail.com")]
     [InlineData("user@hitmail.com", "hotmail.com")]
     [InlineData("user@hptmail.com", "hotmail.com")]
     [InlineData("user@hmail.com", "hotmail.com")]
     [InlineData("user@hotmail.con", "hotmail.com")]
+    [InlineData("user@hotmail.cpm", "hotmail.com")]
     [InlineData("user@hotmail.co", "hotmail.com")]
     [InlineData("user@hotmail.vom", "hotmail.com")]
     [InlineData("user@hotmail.cim", "hotmail.com")]
     [InlineData("user@hotmail.comm", "hotmail.com")]
+    [InlineData("user@outlook.con", "outlook.com")]
+    [InlineData("user@putlook.com", "outlook.com")]
     public void TryParse_WithTypoCorrection_FixesHotmailMisspellings(string input, string expectedDomain)
     {
         Assert.True(EmailAddress.TryParse(input, tryCorrectTypos: true, out var result));
@@ -215,6 +219,16 @@ public class EmailAddressTests
         Assert.Equal(expectedDomain, result!.Domain);
         Assert.True(result.WasCorrected);
         Assert.Equal(PublicEmailProvider.ICloud, result.Provider);
+    }
+
+    [Theory]
+    [InlineData("user@02.pl", "o2.pl")]
+    public void TryParse_WithTypoCorrection_FixesOnetMisspellings(string input, string expectedDomain)
+    {
+        Assert.True(EmailAddress.TryParse(input, tryCorrectTypos: true, out var result));
+        Assert.Equal(expectedDomain, result!.Domain);
+        Assert.True(result.WasCorrected);
+        Assert.Equal(PublicEmailProvider.Onet, result.Provider);
     }
 
     [Fact]

@@ -245,20 +245,27 @@ public sealed class EmailAddress : IEquatable<EmailAddress>, IComparable<EmailAd
         ["hotmil.com"] = "hotmail.com",
         ["hotmsil.com"] = "hotmail.com",
         ["hotmal.com"] = "hotmail.com",
+        ["homail.com"] = "hotmail.com",
         ["hotnail.com"] = "hotmail.com",
         ["hitmail.com"] = "hotmail.com",
         ["hptmail.com"] = "hotmail.com",
         ["hmail.com"] = "hotmail.com",
         ["hotmail.con"] = "hotmail.com",
+        ["hotmail.cpm"] = "hotmail.com",
         ["hotmail.co"] = "hotmail.com",
         ["hotmail.vom"] = "hotmail.com",
         ["hotmail.cim"] = "hotmail.com",
         ["hotmail.comm"] = "hotmail.com",
+        ["outlook.con"] = "outlook.com",
+        ["putlook.com"] = "outlook.com",
 
         // iCloud misspellings
         ["icloude.com"] = "icloud.com",
         ["icloud.se"] = "icloud.com",
         ["icloud.co"] = "icloud.com",
+
+        // Onet misspellings
+        ["02.pl"] = "o2.pl",
     };
 
     private static readonly Lazy<Dictionary<string, Country>> TldCountryMap = new(() =>
