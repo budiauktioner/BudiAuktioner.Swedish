@@ -37,6 +37,12 @@ public sealed class SuspensionType : IEquatable<SuspensionType>, IComparable<Sus
     public static readonly SuspensionType CoilSpring = new("Coil spring", "Coil spring", "Spiralfjäder");
     public static readonly SuspensionType LeafSpring = new("Leaf spring", "Leaf spring", "Bladfjäder");
     public static readonly SuspensionType Air = new("Air", "Air suspension", "Luftfjädring");
+    public static readonly SuspensionType AirAir = new("Air/Air", "Air/Air", "Luft/Luft");
+    public static readonly SuspensionType AirLeaf = new("Air/Leaf", "Air/Leaf", "Luft/Blad");
+    public static readonly SuspensionType LeafLeaf = new("Leaf/Leaf", "Leaf/Leaf", "Blad/Blad");
+    public static readonly SuspensionType Parabolic = new("Parabolic", "Parabolic leaf spring", "Parabolfjäder");
+    public static readonly SuspensionType AirFront = new("AirFront", "Air front", "Luftfjädring fram");
+    public static readonly SuspensionType AirRear = new("AirRear", "Air rear", "Luftfjädring bak");
     public static readonly SuspensionType Hydropneumatic = new("Hydropneumatic", "Hydropneumatic", "Hydropneumatisk");
     public static readonly SuspensionType TorsionBar = new("Torsion bar", "Torsion bar", "Torsionsstav");
     public static readonly SuspensionType Adaptive = new("Adaptive", "Adaptive", "Adaptiv");
@@ -51,7 +57,8 @@ public sealed class SuspensionType : IEquatable<SuspensionType>, IComparable<Sus
     /// <summary>All predefined suspension types.</summary>
     public static IReadOnlyList<SuspensionType> All { get; } =
     [
-        CoilSpring, LeafSpring, Air, Hydropneumatic, TorsionBar, Adaptive, MagneticRide,
+        CoilSpring, LeafSpring, Air, AirAir, AirLeaf, LeafLeaf, Parabolic, AirFront, AirRear,
+        Hydropneumatic, TorsionBar, Adaptive, MagneticRide,
         Independent, MacPherson, DoubleWishbone, MultiLink, SolidAxle, Rigid
     ];
 
@@ -147,14 +154,31 @@ public sealed class SuspensionType : IEquatable<SuspensionType>, IComparable<Sus
         AddKey(d, CoilSpring, "Coil-spring");
         AddKey(d, CoilSpring, "Spiralfjäder");
         AddKey(d, CoilSpring, "Skruvfjäder");
+        AddKey(d, CoilSpring, "Fjäder");
         AddKey(d, LeafSpring, "Leaf");
         AddKey(d, LeafSpring, "Leaf-spring");
         AddKey(d, LeafSpring, "Bladfjäder");
+        AddKey(d, LeafSpring, "Blad");
         AddKey(d, Air, "Air spring");
         AddKey(d, Air, "Pneumatic");
         AddKey(d, Air, "Luftfjäder");
         AddKey(d, Air, "Bälg");
         AddKey(d, Air, "Bellow");
+        AddKey(d, Air, "Luft");
+        AddKey(d, AirAir, "Luft/Luft");
+        AddKey(d, AirLeaf, "Luft/Blad");
+        AddKey(d, LeafLeaf, "Blad/Blad");
+        AddKey(d, Parabolic, "Parabolic spring");
+        AddKey(d, Parabolic, "Parabolic leaf");
+        AddKey(d, Parabolic, "Parabol");
+        AddKey(d, Parabolic, "Paraboll");
+        AddKey(d, Parabolic, "Parabolfjäder");
+        AddKey(d, AirFront, "Air front");
+        AddKey(d, AirFront, "Luft fram");
+        AddKey(d, AirFront, "Luftfjädring fram");
+        AddKey(d, AirRear, "Air rear");
+        AddKey(d, AirRear, "Luft bak");
+        AddKey(d, AirRear, "Luftfjädring bak");
         AddKey(d, Hydropneumatic, "Hydraulic");
         AddKey(d, Hydropneumatic, "Hydraulisk");
         AddKey(d, TorsionBar, "Torsion");

@@ -147,14 +147,14 @@ public static class VehicleMaskingExtensions
 
     /// <summary>
     /// Returns a masked suspension type, e.g. <c>Coil spring</c> → <c>**** ******</c>.
-    /// Spaces are preserved so the structure remains recognizable.
+    /// Spaces and slash separators are preserved so the structure remains recognizable.
     /// </summary>
     public static string ToMaskedString(this SuspensionType suspension)
     {
         var v = suspension.Value;
         var sb = new System.Text.StringBuilder(v.Length);
         foreach (var c in v)
-            sb.Append(c == ' ' ? ' ' : MaskChar);
+            sb.Append(c is ' ' or '/' ? c : MaskChar);
         return sb.ToString();
     }
 

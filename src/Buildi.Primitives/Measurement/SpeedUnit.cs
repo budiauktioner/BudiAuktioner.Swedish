@@ -51,6 +51,8 @@ public sealed class SpeedUnit
     public static SpeedUnit Knot { get; } = new("kn", "knot", "knop", "knots", "knop", 1852m / 3600m,
         "knot", "knots", "knop", "kt");
 
+    public static SpeedUnit Knots => Knot;
+
     public static IReadOnlyList<SpeedUnit> All { get; } =
         [MetersPerSecond, KilometersPerHour, MilesPerHour, FeetPerSecond, Knot];
 

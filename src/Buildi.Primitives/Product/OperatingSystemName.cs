@@ -16,7 +16,8 @@ public enum OperatingSystemFamily
     IPadOS,
     ChromeOS,
     WatchOS,
-    Other
+    Other,
+    None
 }
 
 /// <summary>
@@ -47,6 +48,7 @@ public sealed class OperatingSystemName : IEquatable<OperatingSystemName>, IComp
             foreach (var a in aliases) dict.TryAdd(a, instance);
         }
 
+        Add("None", OperatingSystemFamily.None, "no os", "without os", "inget os", "inget operativsystem");
         Add("Windows", OperatingSystemFamily.Windows, "win", "microsoft windows", "ms windows");
         Add("macOS", OperatingSystemFamily.MacOS, "macos", "mac os", "mac os x", "os x", "osx", "mac");
         Add("Linux", OperatingSystemFamily.Linux);

@@ -6,18 +6,33 @@ public class SuspensionTypeTests
 {
     [Fact]
     public void All_HasExpectedCount() =>
-        Assert.Equal(13, SuspensionType.All.Count);
+        Assert.Equal(19, SuspensionType.All.Count);
 
     [Theory]
     [InlineData("Coil spring")]
     [InlineData("coil")]
     [InlineData("Spiralfjäder")]
     [InlineData("Skruvfjäder")]
+    [InlineData("Fjäder")]
     [InlineData("Leaf spring")]
     [InlineData("Bladfjäder")]
+    [InlineData("Blad")]
     [InlineData("Air")]
     [InlineData("Air suspension")]
     [InlineData("Luftfjädring")]
+    [InlineData("Luft")]
+    [InlineData("Air/Air")]
+    [InlineData("Luft/Luft")]
+    [InlineData("Air/Leaf")]
+    [InlineData("Luft/Blad")]
+    [InlineData("Leaf/Leaf")]
+    [InlineData("Blad/Blad")]
+    [InlineData("Parabolic")]
+    [InlineData("Paraboll")]
+    [InlineData("AirFront")]
+    [InlineData("Luftfjädring fram")]
+    [InlineData("AirRear")]
+    [InlineData("Luftfjädring bak")]
     [InlineData("Pneumatic")]
     [InlineData("Hydropneumatic")]
     [InlineData("Hydropneumatisk")]
@@ -52,8 +67,17 @@ public class SuspensionTypeTests
 
     [Theory]
     [InlineData("Spiralfjäder", "Coil spring")]
+    [InlineData("Fjäder", "Coil spring")]
     [InlineData("Bladfjäder", "Leaf spring")]
+    [InlineData("Blad", "Leaf spring")]
     [InlineData("Luftfjädring", "Air")]
+    [InlineData("Luft", "Air")]
+    [InlineData("Luft/Luft", "Air/Air")]
+    [InlineData("Luft/Blad", "Air/Leaf")]
+    [InlineData("Blad/Blad", "Leaf/Leaf")]
+    [InlineData("Paraboll", "Parabolic")]
+    [InlineData("Luftfjädring fram", "AirFront")]
+    [InlineData("Luftfjädring bak", "AirRear")]
     [InlineData("Pneumatic", "Air")]
     [InlineData("MagneRide", "Magnetic ride")]
     [InlineData("Multilink", "Multi-link")]
@@ -76,6 +100,7 @@ public class SuspensionTypeTests
     {
         Assert.Equal("**** ******", SuspensionType.CoilSpring.ToMaskedString());
         Assert.Equal("***", SuspensionType.Air.ToMaskedString());
+        Assert.Equal("***/****", SuspensionType.AirLeaf.ToMaskedString());
     }
 
     [Fact]

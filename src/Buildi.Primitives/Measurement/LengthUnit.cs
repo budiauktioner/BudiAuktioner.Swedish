@@ -53,7 +53,7 @@ public sealed class LengthUnit
     public static LengthUnit Foot { get; } = new("ft", "foot", "fot", "feet", "fot", 0.3048m, "foot", "feet", "fot");
     public static LengthUnit Yard { get; } = new("yd", "yard", "yard", "yards", "yard", 0.9144m, "yard", "yards");
     public static LengthUnit Mile { get; } = new("mi", "mile", "engelsk mil", "miles", "engelska mil", 1609.344m, "mile", "miles");
-    public static LengthUnit NauticalMile { get; } = new("nmi", "nautical mile", "nautisk mil", "nautical miles", "nautiska mil", 1852m, "nautical mile", "nautical miles", "sjömil");
+    public static LengthUnit NauticalMile { get; } = new("nmi", "nautical mile", "nautisk mil", "nautical miles", "nautiska mil", 1852m, "nautical mile", "nautical miles", "sjömil", "NM");
     public static LengthUnit SwedishMile { get; } = new("mil", "Swedish mile", "mil", "Swedish miles", "mil", 10000m);
 
     public static IReadOnlyList<LengthUnit> All { get; } =
@@ -91,7 +91,13 @@ public sealed class LengthUnit
     {
         result = null;
         if (string.IsNullOrWhiteSpace(input)) return false;
-        return BySymbol.Value.TryGetValue(input.Trim(), out result);
+        var trimmed = input.Trim();
+        if (trimmed == "NM")
+        {
+            result = NauticalMile;
+            return true;
+        }
+        return BySymbol.Value.TryGetValue(trimmed, out result);
     }
 
     public static LengthUnit Parse(string input)

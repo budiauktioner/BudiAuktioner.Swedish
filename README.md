@@ -461,7 +461,7 @@ All types share a consistent API:
 | [`BoatHullMaterial`](#boat-hull-material) | Båt skrovmaterial | Boat hull material (Glasfiber/Aluminium/Stål/Trä/Plast/Kolfiber/Hypalon) |
 | [`SwedishEcoVehicleClassification`](#swedish-eco-vehicle-classification) | Miljöbilsklassning | Swedish miljöbil/klimatbonusbil classification with year ranges |
 | [`BodyType`](#body-type) | Karosstyp | Vehicle body style (Sedan, Kombi, SUV, Off-road/Terrängbil, Coupé, Cabriolet, Van, Pickup, Truck/Lätt lastbil, Trailer, Motorhome, Tractor, Dumper, Tipper, …) |
-| [`SuspensionType`](#suspension-type) | Fjädring | Suspension/damping technology (Coil spring, Air, Hydropneumatic, MacPherson, Multi-link, …) |
+| [`SuspensionType`](#suspension-type) | Fjädring | Suspension/damping technology (Coil spring, Air, Air/Air, Air/Leaf, Hydropneumatic, MacPherson, Multi-link, …) |
 | [`TrackType`](#track-type) | Bandtyp | Continuous-track material on tracked vehicles (Steel/Rubber/Polyurethane/Half-track) |
 | [`TireType`](#tire-type) | Däcktyp | Tire season/use class (Summer/Winter studded/Winter friction/All-season/All-terrain/…) |
 | [`DrivetrainType`](#drivetrain-type) | Drivning | Drivetrain layout (AWD/4WD/quattro, FWD, RWD) with driven-axle count |
@@ -490,7 +490,7 @@ All types share a consistent API:
 | [`ScreenResolution`](#screen-resolution) | Skärmupplösning | Screen resolution (e.g. 1920x1080, Full HD, 4K) |
 | [`AspectRatio`](#aspect-ratio) | Bildförhållande | Width-to-height aspect ratio (4:3, 16:9, 21:9, 32:9) |
 | [`EuEnergyEfficiencyClass`](#energy-efficiency-class) | Energiklass | EU energy efficiency label (A+++–G) |
-| [`OperatingSystemName`](#operating-system-name) | Operativsystem | Canonical OS name (Windows, macOS, Ubuntu, etc.) with family classification |
+| [`OperatingSystemName`](#operating-system-name) | Operativsystem | Canonical OS name (None/Inget OS, Windows, macOS, Ubuntu, etc.) with family classification |
 | [`OperatingSystemVersion`](#operating-system-version) | OS-version | Version string with major/minor/patch/build parsing and comparison |
 | [`OperatingSystemInfo`](#operating-system-info) | Operativsysteminfo | Combined OS name + version, e.g. `Windows 11`, `macOS 14.5` |
 | [`StorageCapacity`](#storage-capacity) | Lagringskapacitet | Hard drive/SSD capacity, wraps `DataSize`, defaults to GB |
@@ -3335,7 +3335,7 @@ EuEnergyEfficiencyClass.Normalize("A++");     // "A++"
 
 #### Operating system name
 
-A recognized operating system name (*operativsystem*) resolved from common aliases to a canonical form. Supports Windows, macOS, Linux distributions (Ubuntu, Debian, Fedora, CentOS, Arch, etc.), Android, iOS, iPadOS, ChromeOS, watchOS, and more. Each OS is classified into an `OperatingSystemFamily` enum.
+A recognized operating system name (*operativsystem*) resolved from common aliases to a canonical form. Supports explicit `None`/`Inget OS` values, Windows, macOS, Linux distributions (Ubuntu, Debian, Fedora, CentOS, Arch, etc.), Android, iOS, iPadOS, ChromeOS, watchOS, and more. Each OS is classified into an `OperatingSystemFamily` enum.
 
 Tests: [OperatingSystemNameTests.cs](test/Buildi.Primitives.Tests/Product/OperatingSystemNameTests.cs)
 
@@ -3349,6 +3349,7 @@ if (OperatingSystemName.TryParse("mac os x", out var os))
 }
 
 OperatingSystemName.IsValid("ubuntu");           // true
+OperatingSystemName.Format("inget os");          // "None"
 OperatingSystemName.Format("win");               // "Windows"
 OperatingSystemName.Format("rhel");              // "Red Hat"
 OperatingSystemName.Normalize("mac os");         // "macOS"
@@ -3964,7 +3965,9 @@ if (Length.TryParse("5.5 km", out var length))
 }
 
 Length.IsValid("10 cm");                    // true
+Length.IsValid("1 NM");                     // true
 Length.Format("1000 m");                    // "1000 m"
+Length.Format("1 NM");                      // "1 nmi"
 Length.Normalize("1000 m");                 // "1000 m"
 ```
 
@@ -4129,6 +4132,7 @@ if (Speed.TryParse("120 km/h", out var speed))
 }
 
 Speed.IsValid("60 mph");                          // true
+Speed.IsValid("10 kn");                           // true
 ```
 
 #### Temperature

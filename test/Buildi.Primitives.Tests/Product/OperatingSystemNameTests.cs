@@ -8,6 +8,8 @@ public class OperatingSystemNameTests
     [InlineData("Windows")]
     [InlineData("windows")]
     [InlineData("win")]
+    [InlineData("None")]
+    [InlineData("Inget OS")]
     [InlineData("macOS")]
     [InlineData("mac os")]
     [InlineData("Mac OS X")]
@@ -30,6 +32,8 @@ public class OperatingSystemNameTests
     [InlineData(" ")]
     [InlineData("FooOS")]
     [InlineData("ReactOS")]
+    [InlineData("Other")]
+    [InlineData("Annat")]
     public void IsValid_ReturnsFalse_ForInvalidInputs(string? input)
     {
         Assert.False(OperatingSystemName.IsValid(input));
@@ -38,6 +42,7 @@ public class OperatingSystemNameTests
     [Theory]
     [InlineData("windows", "Windows", OperatingSystemFamily.Windows)]
     [InlineData("win", "Windows", OperatingSystemFamily.Windows)]
+    [InlineData("inget os", "None", OperatingSystemFamily.None)]
     [InlineData("mac os x", "macOS", OperatingSystemFamily.MacOS)]
     [InlineData("osx", "macOS", OperatingSystemFamily.MacOS)]
     [InlineData("Ubuntu", "Ubuntu", OperatingSystemFamily.Linux)]
@@ -63,6 +68,7 @@ public class OperatingSystemNameTests
 
     [Theory]
     [InlineData("win", "Windows")]
+    [InlineData("inget os", "None")]
     [InlineData("mac os", "macOS")]
     [InlineData("ubuntu", "Ubuntu")]
     public void Format_ReturnsExpected(string? input, string? expected)

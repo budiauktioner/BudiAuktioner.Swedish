@@ -190,7 +190,7 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Boat Hull Material | Båt skrovmaterial | Boat hull material (Glasfiber/Aluminium/Stål/Trä/Plast/Kolfiber/Hypalon) | `Buildi.Primitives.Vehicle.BoatHullMaterial` |
 | Swedish Eco-Vehicle Classification | Miljöbilsklassning | Swedish miljöbil/klimatbonusbil classification with year ranges | `Buildi.Primitives.Vehicle.SwedishEcoVehicleClassification` |
 | Body Type | Karosstyp | Vehicle body style (Sedan, Kombi, SUV, Off-road/Terrängbil, Coupé, Cabriolet, Van, Pickup, Truck/Lätt lastbil, Trailer, Motorhome, Tractor, Dumper, Tipper, …) | `Buildi.Primitives.Vehicle.BodyType` |
-| Suspension Type | Fjädring | Suspension/damping technology (Coil spring, Air, Hydropneumatic, MacPherson, Multi-link, …) | `Buildi.Primitives.Vehicle.SuspensionType` |
+| Suspension Type | Fjädring | Suspension/damping technology (Coil spring, Air, Air/Air, Air/Leaf, Hydropneumatic, MacPherson, Multi-link, …) | `Buildi.Primitives.Vehicle.SuspensionType` |
 | Track Type | Bandtyp | Continuous-track material on tracked vehicles (Steel/Rubber/Polyurethane/Half-track) | `Buildi.Primitives.Vehicle.TrackType` |
 | Tire Type | Däcktyp | Tire season/use class (Summer/Winter studded/Winter friction/All-season/All-terrain/…) | `Buildi.Primitives.Vehicle.TireType` |
 | Drivetrain Type | Drivning | Drivetrain layout (AWD/4WD/quattro, FWD, RWD) with driven-axle count | `Buildi.Primitives.Vehicle.DrivetrainType` |
@@ -217,7 +217,7 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Screen Resolution | Skärmupplösning | Screen resolution (e.g. 1920x1080, Full HD, 4K) | `Buildi.Primitives.Product.ScreenResolution` |
 | Aspect Ratio | Bildförhållande | Width-to-height aspect ratio (4:3, 16:9, 21:9, 32:9, decimal) | `Buildi.Primitives.Product.AspectRatio` |
 | Energy Efficiency Class | Energiklass | EU energy efficiency label (A+++–G) | `Buildi.Primitives.Product.EuEnergyEfficiencyClass` |
-| Operating System Name | Operativsystem | Canonical OS name (Windows, macOS, Ubuntu, etc.) | `Buildi.Primitives.Product.OperatingSystemName` |
+| Operating System Name | Operativsystem | Canonical OS name (None/Inget OS, Windows, macOS, Ubuntu, etc.) | `Buildi.Primitives.Product.OperatingSystemName` |
 | Operating System Version | OS-version | Version string with major/minor/patch parsing | `Buildi.Primitives.Product.OperatingSystemVersion` |
 | Operating System Info | Operativsysteminfo | Combined OS name + version (e.g. Windows 11) | `Buildi.Primitives.Product.OperatingSystemInfo` |
 | Storage Capacity | Lagringskapacitet | HDD/SSD capacity, defaults to GB | `Buildi.Primitives.Product.StorageCapacity` |
@@ -240,8 +240,8 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 
 | English Name | Svenska | Description | Full Name |
 | --- | --- | --- | --- |
-| Length | Längd | Length/distance in meters, km, cm, inches, feet, miles, etc. | `Buildi.Primitives.Measurement.Length` |
-| Length Unit | Längdenhet | Unit definition for length with symbol and conversion factor | `Buildi.Primitives.Measurement.LengthUnit` |
+| Length | Längd | Length/distance in meters, km, cm, inches, feet, miles, nautical miles, etc. | `Buildi.Primitives.Measurement.Length` |
+| Length Unit | Längdenhet | Unit definition for length with symbol and conversion factor, including nautical miles (`nmi`/`NM`) | `Buildi.Primitives.Measurement.LengthUnit` |
 | Area | Area | Area in m², km², hectares, acres, etc. | `Buildi.Primitives.Measurement.Area` |
 | Area Unit | Areaenhet | Unit definition for area | `Buildi.Primitives.Measurement.AreaUnit` |
 | Volume | Volym | Volume in liters, mL, gallons, etc. | `Buildi.Primitives.Measurement.Volume` |
@@ -269,7 +269,7 @@ See the [README](../../README.md) for full usage examples and detailed documenta
 | Frequency | Frekvens | Frequency in Hz, kHz, MHz, GHz, RPM | `Buildi.Primitives.Measurement.Frequency` |
 | Frequency Unit | Frekvensenhet | Unit definition for frequency | `Buildi.Primitives.Measurement.FrequencyUnit` |
 | Speed | Hastighet | Speed in m/s, km/h, mph, knots | `Buildi.Primitives.Measurement.Speed` |
-| Speed Unit | Hastighetsenhet | Unit definition for speed | `Buildi.Primitives.Measurement.SpeedUnit` |
+| Speed Unit | Hastighetsenhet | Unit definition for speed, including knots (`kn`) | `Buildi.Primitives.Measurement.SpeedUnit` |
 | Temperature | Temperatur | Temperature in °C, °F, K with offset conversions | `Buildi.Primitives.Measurement.Temperature` |
 | Temperature Unit | Temperaturenhet | Unit definition for temperature | `Buildi.Primitives.Measurement.TemperatureUnit` |
 | Temperature Delta | Temperaturskillnad | Temperature difference (supports °C and °F deltas) | `Buildi.Primitives.Measurement.TemperatureDelta` |

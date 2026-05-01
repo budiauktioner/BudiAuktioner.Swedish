@@ -246,6 +246,13 @@ public class SpeedTests
         Assert.Equal(expectedSymbol, unit!.Symbol);
     }
 
+    [Fact]
+    public void SpeedUnit_Knots_ReturnsKnotUnit()
+    {
+        Assert.Same(SpeedUnit.Knot, SpeedUnit.Knots);
+        Assert.Equal("kn", SpeedUnit.Knots.Symbol);
+    }
+
     [Theory]
     [InlineData("5,5 m/s")]
     [InlineData("2.5 mph")]
