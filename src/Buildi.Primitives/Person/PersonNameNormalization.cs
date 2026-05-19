@@ -8,12 +8,16 @@ internal static class PersonNameNormalization
 {
     internal static CultureInfo DefaultCulture => PrimitivesDefaults.Culture;
 
+    // Single-letter name parts (e.g. "B N" returned by an identity provider) are
+    // not officially valid full names in most jurisdictions, but they appear in
+    // real-world data from Skatteverket, BankID and other identity providers.
+    // Normalization must preserve them rather than discard the name.
     internal static readonly Regex SinglePartPattern = new(
-        @"^(?:[\p{L}\p{M}]{2,}|['\p{L}\p{M}]{2,}|[\p{Lo}])(?:['\p{Zs}-][\p{L}\p{M}]+)*$",
+        @"^(?:[\p{L}\p{M}]+|['\p{L}\p{M}]{2,}|[\p{Lo}])(?:['\p{Zs}-][\p{L}\p{M}]+)*$",
         RegexOptions.Compiled);
 
     internal static readonly Regex FullNamePattern = new(
-        @"^[\p{L}\p{M}][\p{L}\p{M}']+(?:\s+[\p{L}\p{M}][\p{L}\p{M}']*)+$",
+        @"^[\p{L}\p{M}][\p{L}\p{M}']*(?:\s+[\p{L}\p{M}][\p{L}\p{M}']*)+$",
         RegexOptions.Compiled);
 
     private static readonly Regex HyphenWhitespaceRegex = new(@"\s*-\s*", RegexOptions.Compiled);

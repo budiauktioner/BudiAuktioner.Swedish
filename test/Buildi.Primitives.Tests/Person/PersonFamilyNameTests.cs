@@ -46,7 +46,6 @@ public class PersonFamilyNameTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("A")]
     [InlineData("123")]
     public void TryParse_InvalidInput_Fails(string? input)
     {
@@ -78,7 +77,7 @@ public class PersonFamilyNameTests
     [InlineData("Li", true)]
     [InlineData("Ng", true)]
     [InlineData("Null", true)]
-    [InlineData("A", false)]
+    [InlineData("A", true)]
     [InlineData("", false)]
     [InlineData(null, false)]
     public void IsValid_ReturnsExpected(string? input, bool expected)

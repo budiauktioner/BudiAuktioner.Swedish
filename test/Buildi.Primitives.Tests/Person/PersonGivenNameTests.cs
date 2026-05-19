@@ -30,6 +30,12 @@ public class PersonGivenNameTests
     [InlineData("Li", "Li")]
     [InlineData("Ed", "Ed")]
     [InlineData("Ai", "Ai")]
+    [InlineData("B", "B")]
+    [InlineData("B N", "B N")]
+    [InlineData("b n", "B N")]
+    [InlineData("B N P", "B N P")]
+    [InlineData("Elsa B", "Elsa B")]
+    [InlineData("B Elsa", "B Elsa")]
     [InlineData("Null", "Null")]
     [InlineData("null", "Null")]
     [InlineData("NULL", "Null")]
@@ -76,7 +82,6 @@ public class PersonGivenNameTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("A")]
     [InlineData("123")]
     public void TryParse_InvalidInput_Fails(string? input)
     {
@@ -172,7 +177,8 @@ public class PersonGivenNameTests
     [InlineData("Li", true)]
     [InlineData("Null", true)]
     [InlineData("True", true)]
-    [InlineData("A", false)]
+    [InlineData("B", true)]
+    [InlineData("B N", true)]
     [InlineData("", false)]
     [InlineData(null, false)]
     public void IsValid_ReturnsExpected(string? input, bool expected)
@@ -196,6 +202,8 @@ public class PersonGivenNameTests
     [InlineData("josé", "José")]
     [InlineData("null", "Null")]
     [InlineData("bo", "Bo")]
+    [InlineData("B N", "B N")]
+    [InlineData("b n", "B N")]
     [InlineData("", null)]
     [InlineData(null, null)]
     public void Normalize_ReturnsExpected(string? input, string? expected)
